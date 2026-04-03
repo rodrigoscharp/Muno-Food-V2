@@ -5,6 +5,7 @@ import { formatCurrency } from "@/lib/utils";
 import { MenuItemModal } from "./MenuItemModal";
 import { Pencil, Trash2, Plus, ToggleLeft, ToggleRight } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 interface MenuItem {
   id: string;
@@ -48,20 +49,30 @@ export function MenuManager({ initialCategories, allCategories }: Props) {
   async function deleteItem(id: string) {
     if (!confirm("Tem certeza que deseja excluir este item?")) return;
     setLoading(id);
-    await fetch(`/api/menu/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/menu/${id}`, { method: "DELETE" });
     setLoading(null);
-    router.refresh();
+    if (res.ok) {
+      toast.success("Item excluído");
+      router.refresh();
+    } else {
+      toast.error("Erro ao excluir item");
+    }
   }
 
   async function toggleAvailable(item: MenuItem) {
     setLoading(item.id);
-    await fetch(`/api/menu/${item.id}`, {
+    const res = await fetch(`/api/menu/${item.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ available: !item.available }),
     });
     setLoading(null);
-    router.refresh();
+    if (res.ok) {
+      toast.success(item.available ? "Item desativado" : "Item ativado");
+      router.refresh();
+    } else {
+      toast.error("Erro ao atualizar item");
+    }
   }
 
   return (

@@ -4,6 +4,7 @@ import { useKitchenOrders } from "@/hooks/useKitchenOrders";
 import { formatCurrency, ORDER_STATUS_LABELS } from "@/lib/utils";
 import { OrderStatus, OrderWithItems } from "@/types";
 import { Clock, ChefHat, CheckCircle } from "lucide-react";
+import { toast } from "sonner";
 
 const KITCHEN_COLUMNS: { status: OrderStatus; label: string; icon: React.ReactNode; color: string }[] = [
   { status: "PENDING", label: "Pendente", icon: <Clock size={16} />, color: "yellow" },
@@ -40,19 +41,23 @@ export default function KitchenPage() {
     const nextStatus = NEXT_STATUS[order.status];
     if (!nextStatus) return;
 
-    await fetch(`/api/orders/${order.id}`, {
+    const res = await fetch(`/api/orders/${order.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: nextStatus }),
     });
+    if (res.ok) {
+      toast.success(`Pedido #${order.id.slice(-6).toUpperCase()} → ${ORDER_STATUS_LABELS[nextStatus]}`);
+    }
   }
 
   async function cancelOrder(orderId: string) {
-    await fetch(`/api/orders/${orderId}`, {
+    const res = await fetch(`/api/orders/${orderId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "CANCELLED" }),
     });
+    if (res.ok) toast.error(`Pedido #${orderId.slice(-6).toUpperCase()} cancelado`);
   }
 
   if (loading) {

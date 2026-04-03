@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { X } from "lucide-react";
+import { X, Upload } from "lucide-react";
+import { toast } from "sonner";
 
 const schema = z.object({
   name: z.string().min(1, "Nome obrigatório"),
@@ -37,15 +38,37 @@ interface Props {
 
 export function MenuItemModal({ open, onClose, item, categories, onSaved }: Props) {
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } = useForm<FormData>({ resolver: zodResolver(schema) as any });
+
+  const imageUrlValue = watch("imageUrl");
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    if (res.ok) {
+      const { url } = await res.json();
+      setValue("imageUrl", url);
+      toast.success("Imagem enviada!");
+    } else {
+      toast.error("Erro ao enviar imagem");
+    }
+    setUploading(false);
+  }
 
   useEffect(() => {
     if (item) {
@@ -95,11 +118,14 @@ export function MenuItemModal({ open, onClose, item, categories, onSaved }: Prop
 
     if (!res.ok) {
       const json = await res.json();
-      setError(json.error?.[0]?.message ?? "Erro ao salvar");
+      const msg = json.error?.[0]?.message ?? "Erro ao salvar";
+      setError(msg);
+      toast.error(msg);
       setLoading(false);
       return;
     }
 
+    toast.success(item ? "Item atualizado!" : "Item criado!");
     setLoading(false);
     onSaved();
   }
@@ -187,13 +213,27 @@ export function MenuItemModal({ open, onClose, item, categories, onSaved }: Prop
 
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">
-              URL da Imagem
+              Imagem
             </label>
+            {/* Preview */}
+            {imageUrlValue && (
+              <div className="mb-2 relative h-28 w-full rounded-lg overflow-hidden border border-neutral-200 bg-neutral-50">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imageUrlValue} alt="preview" className="w-full h-full object-cover" />
+              </div>
+            )}
+            {/* Upload button */}
+            <label className={`flex items-center gap-2 w-full px-4 py-2.5 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 text-sm text-neutral-500 cursor-pointer hover:border-red-400 hover:text-red-500 transition ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
+              <Upload size={14} />
+              {uploading ? "Enviando..." : "Clique para enviar imagem"}
+              <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+            </label>
+            {/* Or URL input */}
             <input
               {...register("imageUrl")}
               type="url"
-              placeholder="https://..."
-              className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent transition"
+              placeholder="Ou cole uma URL..."
+              className="mt-2 w-full px-4 py-2 rounded-lg border border-neutral-200 bg-neutral-50 text-xs text-neutral-500 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent transition"
             />
             {errors.imageUrl && (
               <p className="text-red-500 text-xs mt-1">{errors.imageUrl.message}</p>

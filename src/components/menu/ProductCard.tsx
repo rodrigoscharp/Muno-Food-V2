@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { formatCurrency } from "@/lib/utils";
 import { MenuItemWithCategory } from "@/types";
+import { toast } from "sonner";
 
 export function ProductCard({ item }: { item: MenuItemWithCategory }) {
   const addItem = useCart((s) => s.addItem);
@@ -16,6 +17,7 @@ export function ProductCard({ item }: { item: MenuItemWithCategory }) {
       price: item.price,
       imageUrl: item.imageUrl,
     });
+    toast.success(`${item.name} adicionado!`, { duration: 1500 });
   }
 
   return (

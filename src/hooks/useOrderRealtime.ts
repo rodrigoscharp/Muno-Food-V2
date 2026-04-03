@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { OrderStatus } from "@/types";
+import { ORDER_STATUS_LABELS } from "@/lib/utils";
+import { toast } from "sonner";
 
 export function useOrderRealtime(orderId: string) {
   const [status, setStatus] = useState<OrderStatus | null>(null);
@@ -20,8 +22,10 @@ export function useOrderRealtime(orderId: string) {
           filter: `id=eq.${orderId}`,
         },
         (payload) => {
-          setStatus(payload.new.status as OrderStatus);
+          const newStatus = payload.new.status as OrderStatus;
+          setStatus(newStatus);
           setUpdatedAt(payload.new.updatedAt as string);
+          toast.info(`Pedido atualizado: ${ORDER_STATUS_LABELS[newStatus]}`);
         }
       )
       .subscribe();
