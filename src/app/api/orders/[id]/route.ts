@@ -48,7 +48,7 @@ export async function PATCH(
   const body = await req.json();
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.errors }, { status: 400 });
+    return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
   }
 
   const order = await prisma.order.update({

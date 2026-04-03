@@ -6,23 +6,14 @@ import { z } from "zod";
 export async function GET() {
   const categories = await prisma.category.findMany({
     orderBy: { position: "asc" },
-    include: {
-      items: {
-        where: { available: true },
-        orderBy: { name: "asc" },
-      },
-    },
   });
   return NextResponse.json(categories);
 }
 
-const menuItemSchema = z.object({
+const schema = z.object({
   name: z.string().min(1),
-  description: z.string().optional(),
-  price: z.number().positive(),
-  imageUrl: z.string().url().optional().nullable(),
-  available: z.boolean().default(true),
-  categoryId: z.string(),
+  slug: z.string().min(1),
+  position: z.number().int().default(0),
 });
 
 export async function POST(req: NextRequest) {
@@ -32,11 +23,11 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const parsed = menuItemSchema.safeParse(body);
+  const parsed = schema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
   }
 
-  const item = await prisma.menuItem.create({ data: parsed.data });
-  return NextResponse.json(item, { status: 201 });
+  const category = await prisma.category.create({ data: parsed.data });
+  return NextResponse.json(category, { status: 201 });
 }

@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const parsed = orderSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.errors }, { status: 400 });
+    return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
   }
 
   const { items, paymentMethod, notes, customerName, customerPhone } = parsed.data;
