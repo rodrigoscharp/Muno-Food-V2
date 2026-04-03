@@ -41,7 +41,7 @@ export function CategoryNav({ categories }: { categories: Category[] }) {
   }
 
   return (
-    <nav className="sticky top-16 z-30 bg-white border-b border-neutral-200">
+    <nav className="sticky top-24 z-30 bg-white border-b border-neutral-200">
       <div className="max-w-5xl mx-auto px-4">
         <div className="flex gap-1 overflow-x-auto no-scrollbar py-3">
           {categories.map((cat) => (
