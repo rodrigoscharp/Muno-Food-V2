@@ -31,7 +31,7 @@ export default async function MenuPage() {
                   {category.items.map((item) => (
                     <ProductCard
                       key={item.id}
-                      item={item as unknown as MenuItemWithCategory}
+                      item={{ ...item, price: Number(item.price) } as unknown as MenuItemWithCategory}
                     />
                   ))}
                 </div>

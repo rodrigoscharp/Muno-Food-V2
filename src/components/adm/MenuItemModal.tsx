@@ -9,9 +9,9 @@ import { X } from "lucide-react";
 const schema = z.object({
   name: z.string().min(1, "Nome obrigatório"),
   description: z.string().optional(),
-  price: z.coerce.number().positive("Preço deve ser positivo"),
+  price: z.string().refine((v) => !isNaN(Number(v)) && Number(v) > 0, "Preço deve ser positivo"),
   imageUrl: z.string().url("URL inválida").optional().or(z.literal("")),
-  available: z.boolean().default(true),
+  available: z.boolean(),
   categoryId: z.string().min(1, "Selecione uma categoria"),
 });
 
@@ -44,14 +44,15 @@ export function MenuItemModal({ open, onClose, item, categories, onSaved }: Prop
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<FormData>({ resolver: zodResolver(schema) });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } = useForm<FormData>({ resolver: zodResolver(schema) as any });
 
   useEffect(() => {
     if (item) {
       reset({
         name: item.name,
         description: item.description ?? "",
-        price: item.price,
+        price: String(item.price),
         imageUrl: item.imageUrl ?? "",
         available: item.available,
         categoryId: item.categoryId,
@@ -60,7 +61,7 @@ export function MenuItemModal({ open, onClose, item, categories, onSaved }: Prop
       reset({
         name: "",
         description: "",
-        price: 0,
+        price: "",
         imageUrl: "",
         available: true,
         categoryId: categories[0]?.id ?? "",
@@ -75,6 +76,7 @@ export function MenuItemModal({ open, onClose, item, categories, onSaved }: Prop
 
     const payload = {
       ...data,
+      price: Number(data.price),
       imageUrl: data.imageUrl || null,
       description: data.description || null,
     };
@@ -122,7 +124,8 @@ export function MenuItemModal({ open, onClose, item, categories, onSaved }: Prop
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+        <form onSubmit={(handleSubmit as any)(onSubmit)} className="p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">
               Nome *
