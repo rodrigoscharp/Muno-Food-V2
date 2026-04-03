@@ -80,7 +80,7 @@ export function MenuManager({ initialCategories, allCategories }: Props) {
       <div className="flex justify-end mb-4">
         <button
           onClick={openCreate}
-          className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
+          className="flex items-center gap-2 bg-brand hover:bg-brand-dark text-white text-sm font-medium px-4 py-2 rounded-lg transition"
         >
           <Plus size={16} />
           Novo Item
@@ -141,7 +141,7 @@ export function MenuManager({ initialCategories, allCategories }: Props) {
                     <button
                       onClick={() => deleteItem(item.id)}
                       disabled={loading === item.id}
-                      className="p-1.5 rounded-lg hover:bg-red-50 transition text-neutral-400 hover:text-red-500"
+                      className="p-1.5 rounded-lg hover:bg-brand-light transition text-neutral-400 hover:text-brand"
                     >
                       <Trash2 size={15} />
                     </button>

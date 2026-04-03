@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -47,14 +48,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-8">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-red-500 tracking-tight">
-              MUNO
-            </h1>
-            <p className="text-neutral-500 mt-2 text-sm">
+            <div className="flex justify-center mb-4">
+              <Image src="/logo.jpg" alt="MUNO" width={120} height={44} className="h-11 w-auto object-contain" />
+            </div>
+            <p className="text-neutral-500 text-sm">
               Entre na sua conta
             </p>
           </div>
@@ -68,10 +69,10 @@ export default function LoginPage() {
                 {...register("email")}
                 type="email"
                 placeholder="seu@email.com"
-                className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent transition"
+                className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
               />
               {errors.email && (
-                <p className="text-red-500 text-xs mt-1">
+                <p className="text-brand text-xs mt-1">
                   {errors.email.message}
                 </p>
               )}
@@ -85,25 +86,25 @@ export default function LoginPage() {
                 {...register("password")}
                 type="password"
                 placeholder="••••••"
-                className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent transition"
+                className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
               />
               {errors.password && (
-                <p className="text-red-500 text-xs mt-1">
+                <p className="text-brand text-xs mt-1">
                   {errors.password.message}
                 </p>
               )}
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2.5">
-                <p className="text-red-600 text-sm">{error}</p>
+              <div className="bg-brand-light border border-brand-muted rounded-lg px-4 py-2.5">
+                <p className="text-brand-dark text-sm">{error}</p>
               </div>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg transition text-sm"
+              className="w-full bg-brand hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg transition text-sm"
             >
               {loading ? "Entrando..." : "Entrar"}
             </button>
@@ -111,7 +112,7 @@ export default function LoginPage() {
 
           <p className="text-center text-sm text-neutral-500 mt-6">
             Não tem conta?{" "}
-            <Link href="/register" className="text-red-500 hover:text-red-600 font-medium">
+            <Link href="/register" className="text-brand hover:text-brand-dark font-medium">
               Cadastre-se
             </Link>
           </p>

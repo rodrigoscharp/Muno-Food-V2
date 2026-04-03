@@ -40,11 +40,11 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   IN_PREPARATION: "bg-orange-100 text-orange-700",
   READY: "bg-green-100 text-green-700",
   DELIVERED: "bg-neutral-100 text-neutral-600",
-  CANCELLED: "bg-red-100 text-red-700",
+  CANCELLED: "bg-brand-light text-red-700",
 };
 
 const PAYMENT_COLORS: Record<PaymentStatus, string> = {
-  UNPAID: "text-red-500",
+  UNPAID: "text-brand",
   PAID: "text-green-600",
   REFUNDED: "text-neutral-500",
 };
@@ -66,7 +66,7 @@ export function AdminOrdersTable({ orders }: { orders: Order[] }) {
               onClick={() => setFilter(s)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium transition ${
                 filter === s
-                  ? "bg-red-500 text-white"
+                  ? "bg-brand text-white"
                   : "bg-white border border-neutral-200 text-neutral-600 hover:border-neutral-300"
               }`}
             >
@@ -190,7 +190,7 @@ export function AdminOrdersTable({ orders }: { orders: Order[] }) {
                   {selected.items.map((item) => (
                     <li key={item.id} className="flex items-start justify-between gap-2">
                       <div className="flex gap-2">
-                        <span className="text-sm font-bold text-red-500">{item.quantity}x</span>
+                        <span className="text-sm font-bold text-brand">{item.quantity}x</span>
                         <div>
                           <span className="text-sm">{item.menuItem.name}</span>
                           {item.notes && (

@@ -114,7 +114,7 @@ export default function KitchenPage() {
                   <ul className="space-y-1 mb-3">
                     {order.items.map((item) => (
                       <li key={item.id} className="text-sm text-white">
-                        <span className="font-bold text-red-400">{item.quantity}x</span>{" "}
+                        <span className="font-bold text-brand-muted">{item.quantity}x</span>{" "}
                         {item.menuItem.name}
                         {item.notes && (
                           <p className="text-xs text-neutral-500 ml-4">{item.notes}</p>
@@ -145,7 +145,7 @@ export default function KitchenPage() {
                       {NEXT_STATUS[order.status] && (
                         <button
                           onClick={() => advanceStatus(order)}
-                          className="text-xs px-2 py-1 rounded bg-red-500 hover:bg-red-600 text-white font-medium transition"
+                          className="text-xs px-2 py-1 rounded bg-brand hover:bg-brand-dark text-white font-medium transition"
                         >
                           {order.status === "READY" ? "Entregar" : "Avançar"}
                         </button>

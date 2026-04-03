@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 import { useCart } from "@/hooks/useCart";
 import { CartDrawer } from "@/components/cart/CartDrawer";
@@ -18,19 +19,19 @@ export function Header() {
     <>
       <header className="sticky top-0 z-40 bg-white border-b border-neutral-200 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
-          <Link href="/" className="text-2xl font-bold text-red-500 tracking-tight shrink-0">
-            MUNO
+          <Link href="/" className="shrink-0">
+            <Image src="/logo.jpg" alt="MUNO" width={96} height={36} className="h-9 w-auto object-contain" priority />
           </Link>
 
           {/* Desktop nav */}
           <div className="hidden sm:flex items-center gap-1">
             {session?.user.role === "ADMIN" && (
-              <Link href="/adm" className="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-red-500 px-3 py-1.5 rounded-lg hover:bg-red-50 transition">
+              <Link href="/adm" className="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-brand px-3 py-1.5 rounded-lg hover:bg-brand-light transition">
                 <Settings size={14} /> Admin
               </Link>
             )}
             {(session?.user.role === "ADMIN" || session?.user.role === "KITCHEN") && (
-              <Link href="/dashboard" className="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-red-500 px-3 py-1.5 rounded-lg hover:bg-red-50 transition">
+              <Link href="/dashboard" className="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-brand px-3 py-1.5 rounded-lg hover:bg-brand-light transition">
                 <ChefHat size={14} /> Cozinha
               </Link>
             )}
@@ -45,7 +46,7 @@ export function Header() {
             >
               <ShoppingCart size={20} className="text-neutral-700" />
               {itemCount() > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold leading-none">
+                <span className="absolute -top-0.5 -right-0.5 bg-brand text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold leading-none">
                   {itemCount() > 9 ? "9+" : itemCount()}
                 </span>
               )}
@@ -76,7 +77,7 @@ export function Header() {
                 )}
               </div>
             ) : (
-              <Link href="/login" className="hidden sm:block text-sm text-neutral-600 hover:text-red-500 px-3 py-1.5 rounded-lg hover:bg-red-50 transition font-medium">
+              <Link href="/login" className="hidden sm:block text-sm text-neutral-600 hover:text-brand px-3 py-1.5 rounded-lg hover:bg-brand-light transition font-medium">
                 Entrar
               </Link>
             )}
@@ -112,7 +113,7 @@ export function Header() {
                 <LogOut size={15} /> Sair ({session.user.name})
               </button>
             ) : (
-              <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-red-500 font-medium hover:bg-red-50">
+              <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-brand font-medium hover:bg-brand-light">
                 Entrar
               </Link>
             )}

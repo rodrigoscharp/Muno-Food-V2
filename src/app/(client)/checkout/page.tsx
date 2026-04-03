@@ -37,7 +37,7 @@ export default function CheckoutPage() {
     return (
       <div className="max-w-lg mx-auto px-4 py-16 text-center">
         <p className="text-neutral-500 mb-4">Seu carrinho está vazio.</p>
-        <Link href="/" className="text-red-500 font-medium hover:underline">
+        <Link href="/" className="text-brand font-medium hover:underline">
           Ver cardápio
         </Link>
       </div>
@@ -129,10 +129,10 @@ export default function CheckoutPage() {
               <input
                 {...register("customerName")}
                 placeholder="Seu nome"
-                className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent transition"
+                className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
               />
               {errors.customerName && (
-                <p className="text-red-500 text-xs mt-1">{errors.customerName.message}</p>
+                <p className="text-brand text-xs mt-1">{errors.customerName.message}</p>
               )}
             </div>
 
@@ -143,10 +143,10 @@ export default function CheckoutPage() {
               <input
                 {...register("customerPhone")}
                 placeholder="(11) 99999-9999"
-                className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent transition"
+                className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
               />
               {errors.customerPhone && (
-                <p className="text-red-500 text-xs mt-1">{errors.customerPhone.message}</p>
+                <p className="text-brand text-xs mt-1">{errors.customerPhone.message}</p>
               )}
             </div>
 
@@ -158,7 +158,7 @@ export default function CheckoutPage() {
                 {...register("notes")}
                 placeholder="Sem cebola, ponto da carne, etc."
                 rows={2}
-                className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent transition resize-none"
+                className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition resize-none"
               />
             </div>
           </div>
@@ -170,15 +170,15 @@ export default function CheckoutPage() {
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-              <p className="text-red-600 text-sm">{error}</p>
+            <div className="bg-brand-light border border-brand-muted rounded-lg px-4 py-3">
+              <p className="text-brand-dark text-sm">{error}</p>
             </div>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition"
+            className="w-full bg-brand hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition"
           >
             {loading
               ? "Processando..."
@@ -195,7 +195,7 @@ export default function CheckoutPage() {
             {items.map((item) => (
               <li key={item.id} className="flex items-start justify-between gap-2">
                 <div className="flex gap-2 min-w-0">
-                  <span className="text-sm font-bold text-red-500 flex-shrink-0">
+                  <span className="text-sm font-bold text-brand flex-shrink-0">
                     {item.quantity}x
                   </span>
                   <span className="text-sm text-neutral-800 truncate">{item.name}</span>

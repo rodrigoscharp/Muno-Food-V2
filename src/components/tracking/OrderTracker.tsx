@@ -50,7 +50,7 @@ export function OrderTracker({ orderId, initialStatus, order }: Props) {
       <div className="bg-white rounded-xl border border-neutral-200 p-6">
         {isCancelled ? (
           <div className="text-center py-4">
-            <p className="text-red-500 font-semibold text-lg">Pedido Cancelado</p>
+            <p className="text-brand font-semibold text-lg">Pedido Cancelado</p>
             <p className="text-neutral-400 text-sm mt-1">
               Entre em contato conosco se tiver dúvidas.
             </p>
@@ -77,9 +77,9 @@ export function OrderTracker({ orderId, initialStatus, order }: Props) {
                     <div
                       className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
                         isCompleted
-                          ? "bg-red-500 border-red-500 text-white"
+                          ? "bg-brand border-brand text-white"
                           : isCurrent
-                          ? "bg-white border-red-400 text-red-500 shadow-md shadow-red-100"
+                          ? "bg-white border-red-400 text-brand shadow-md shadow-red-100"
                           : "bg-white border-neutral-200 text-neutral-300"
                       }`}
                     >
@@ -102,7 +102,7 @@ export function OrderTracker({ orderId, initialStatus, order }: Props) {
         {!isCancelled && (
           <p className="text-center text-sm font-medium text-neutral-700 mt-6">
             Status atual:{" "}
-            <span className="text-red-500">{ORDER_STATUS_LABELS[currentStatus]}</span>
+            <span className="text-brand">{ORDER_STATUS_LABELS[currentStatus]}</span>
           </p>
         )}
       </div>
@@ -114,7 +114,7 @@ export function OrderTracker({ orderId, initialStatus, order }: Props) {
           {order.items.map((item) => (
             <li key={item.id} className="flex items-start justify-between gap-2">
               <div className="flex gap-2 min-w-0">
-                <span className="text-sm font-bold text-red-500 flex-shrink-0">
+                <span className="text-sm font-bold text-brand flex-shrink-0">
                   {item.quantity}x
                 </span>
                 <div>

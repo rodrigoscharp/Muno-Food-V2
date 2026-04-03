@@ -42,7 +42,7 @@ export default async function TrackPage({ params, searchParams }: Props) {
         </div>
       )}
       {payment === "failure" && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-center">
+        <div className="bg-brand-light border border-brand-muted rounded-xl p-4 mb-6 text-center">
           <p className="text-red-700 font-medium">Pagamento não aprovado. Tente novamente.</p>
         </div>
       )}

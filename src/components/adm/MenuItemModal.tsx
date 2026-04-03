@@ -158,10 +158,10 @@ export function MenuItemModal({ open, onClose, item, categories, onSaved }: Prop
             </label>
             <input
               {...register("name")}
-              className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent transition"
+              className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
             />
             {errors.name && (
-              <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>
+              <p className="text-brand text-xs mt-1">{errors.name.message}</p>
             )}
           </div>
 
@@ -172,7 +172,7 @@ export function MenuItemModal({ open, onClose, item, categories, onSaved }: Prop
             <textarea
               {...register("description")}
               rows={2}
-              className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent transition resize-none"
+              className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition resize-none"
             />
           </div>
 
@@ -185,10 +185,10 @@ export function MenuItemModal({ open, onClose, item, categories, onSaved }: Prop
               type="number"
               step="0.01"
               min="0"
-              className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent transition"
+              className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
             />
             {errors.price && (
-              <p className="text-red-500 text-xs mt-1">{errors.price.message}</p>
+              <p className="text-brand text-xs mt-1">{errors.price.message}</p>
             )}
           </div>
 
@@ -198,7 +198,7 @@ export function MenuItemModal({ open, onClose, item, categories, onSaved }: Prop
             </label>
             <select
               {...register("categoryId")}
-              className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent transition"
+              className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
             >
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
@@ -207,7 +207,7 @@ export function MenuItemModal({ open, onClose, item, categories, onSaved }: Prop
               ))}
             </select>
             {errors.categoryId && (
-              <p className="text-red-500 text-xs mt-1">{errors.categoryId.message}</p>
+              <p className="text-brand text-xs mt-1">{errors.categoryId.message}</p>
             )}
           </div>
 
@@ -223,7 +223,7 @@ export function MenuItemModal({ open, onClose, item, categories, onSaved }: Prop
               </div>
             )}
             {/* Upload button */}
-            <label className={`flex items-center gap-2 w-full px-4 py-2.5 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 text-sm text-neutral-500 cursor-pointer hover:border-red-400 hover:text-red-500 transition ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
+            <label className={`flex items-center gap-2 w-full px-4 py-2.5 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 text-sm text-neutral-500 cursor-pointer hover:border-red-400 hover:text-brand transition ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
               <Upload size={14} />
               {uploading ? "Enviando..." : "Clique para enviar imagem"}
               <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
@@ -233,10 +233,10 @@ export function MenuItemModal({ open, onClose, item, categories, onSaved }: Prop
               {...register("imageUrl")}
               type="url"
               placeholder="Ou cole uma URL..."
-              className="mt-2 w-full px-4 py-2 rounded-lg border border-neutral-200 bg-neutral-50 text-xs text-neutral-500 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent transition"
+              className="mt-2 w-full px-4 py-2 rounded-lg border border-neutral-200 bg-neutral-50 text-xs text-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
             />
             {errors.imageUrl && (
-              <p className="text-red-500 text-xs mt-1">{errors.imageUrl.message}</p>
+              <p className="text-brand text-xs mt-1">{errors.imageUrl.message}</p>
             )}
           </div>
 
@@ -253,8 +253,8 @@ export function MenuItemModal({ open, onClose, item, categories, onSaved }: Prop
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2.5">
-              <p className="text-red-600 text-sm">{error}</p>
+            <div className="bg-brand-light border border-brand-muted rounded-lg px-4 py-2.5">
+              <p className="text-brand-dark text-sm">{error}</p>
             </div>
           )}
 
@@ -269,7 +269,7 @@ export function MenuItemModal({ open, onClose, item, categories, onSaved }: Prop
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-lg transition"
+              className="flex-1 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-lg transition"
             >
               {loading ? "Salvando..." : "Salvar"}
             </button>

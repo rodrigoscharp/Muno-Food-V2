@@ -50,7 +50,7 @@ export function CategoryNav({ categories }: { categories: Category[] }) {
               onClick={() => scrollTo(cat.slug)}
               className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition ${
                 active === cat.slug
-                  ? "bg-red-500 text-white"
+                  ? "bg-brand text-white"
                   : "text-neutral-600 hover:bg-neutral-100"
               }`}
             >

@@ -65,7 +65,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                     className="w-7 h-7 rounded-full border border-neutral-200 flex items-center justify-center hover:bg-neutral-50 transition"
                   >
                     {item.quantity === 1 ? (
-                      <Trash2 size={12} className="text-red-400" />
+                      <Trash2 size={12} className="text-brand-muted" />
                     ) : (
                       <Minus size={12} />
                     )}
@@ -101,7 +101,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
             <Link
               href="/checkout"
               onClick={onClose}
-              className="block w-full bg-red-500 hover:bg-red-600 text-white text-center font-semibold py-3 rounded-xl transition text-sm"
+              className="block w-full bg-brand hover:bg-brand-dark text-white text-center font-semibold py-3 rounded-xl transition text-sm"
             >
               Fazer Pedido
             </Link>

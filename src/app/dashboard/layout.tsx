@@ -20,7 +20,7 @@ export default async function KitchenLayout({
     <div className="min-h-screen bg-neutral-950 text-white flex flex-col">
       <header className="bg-neutral-900 border-b border-neutral-800 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <ChefHat className="text-red-400" size={20} />
+          <ChefHat className="text-brand-muted" size={20} />
           <span className="font-bold text-lg">Cozinha</span>
         </div>
         <div className="flex items-center gap-4">

@@ -36,7 +36,7 @@ export function PaymentMethodSelector({ value, onChange }: Props) {
           key={option.value}
           className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition ${
             value === option.value
-              ? "border-red-400 bg-red-50"
+              ? "border-red-400 bg-brand-light"
               : "border-neutral-200 hover:border-neutral-300"
           }`}
         >

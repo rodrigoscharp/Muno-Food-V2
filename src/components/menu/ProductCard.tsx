@@ -73,7 +73,7 @@ export function ProductCard({ item }: { item: MenuItemWithCategory }) {
           <button
             onClick={handleAdd}
             disabled={!item.available}
-            className="flex items-center justify-center w-8 h-8 rounded-full bg-red-500 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white transition"
+            className="flex items-center justify-center w-8 h-8 rounded-full bg-brand hover:bg-brand-dark disabled:opacity-40 disabled:cursor-not-allowed text-white transition"
           >
             <Plus size={16} />
           </button>

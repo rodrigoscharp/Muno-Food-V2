@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { LayoutDashboard, UtensilsCrossed, ShoppingBag, LogOut } from "lucide-react";
@@ -21,10 +22,10 @@ export function AdminSidebar({ user }: Props) {
   return (
     <aside className="w-56 bg-white border-r border-neutral-200 flex flex-col shrink-0">
       <div className="px-6 py-5 border-b border-neutral-100">
-        <Link href="/" className="text-xl font-bold text-red-500">
-          MUNO
+        <Link href="/" className="block">
+          <Image src="/logo.jpg" alt="MUNO" width={80} height={30} className="h-8 w-auto object-contain" />
         </Link>
-        <p className="text-xs text-neutral-400 mt-0.5">Painel Admin</p>
+        <p className="text-xs text-neutral-400 mt-1">Painel Admin</p>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-0.5">
@@ -36,7 +37,7 @@ export function AdminSidebar({ user }: Props) {
               href={href}
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition ${
                 active
-                  ? "bg-red-50 text-red-600 font-medium"
+                  ? "bg-brand-light text-brand-dark font-medium"
                   : "text-neutral-600 hover:bg-neutral-100"
               }`}
             >

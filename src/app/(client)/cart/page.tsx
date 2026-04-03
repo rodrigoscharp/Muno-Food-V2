@@ -15,7 +15,7 @@ export default function CartPage() {
         <p className="text-lg font-medium">Seu carrinho está vazio</p>
         <Link
           href="/"
-          className="text-sm text-red-500 hover:text-red-600 font-medium"
+          className="text-sm text-brand hover:text-brand-dark font-medium"
         >
           Ver cardápio
         </Link>
@@ -51,7 +51,7 @@ export default function CartPage() {
                 className="w-7 h-7 rounded-full border border-neutral-200 flex items-center justify-center hover:bg-neutral-50 transition"
               >
                 {item.quantity === 1 ? (
-                  <Trash2 size={12} className="text-red-400" />
+                  <Trash2 size={12} className="text-brand-muted" />
                 ) : (
                   <Minus size={12} />
                 )}
@@ -85,14 +85,14 @@ export default function CartPage() {
 
         <Link
           href="/checkout"
-          className="block w-full bg-red-500 hover:bg-red-600 text-white text-center font-semibold py-3 rounded-xl transition"
+          className="block w-full bg-brand hover:bg-brand-dark text-white text-center font-semibold py-3 rounded-xl transition"
         >
           Finalizar Pedido
         </Link>
 
         <button
           onClick={clearCart}
-          className="w-full text-sm text-neutral-400 hover:text-red-500 transition"
+          className="w-full text-sm text-neutral-400 hover:text-brand transition"
         >
           Limpar carrinho
         </button>
