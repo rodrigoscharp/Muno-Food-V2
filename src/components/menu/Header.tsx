@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 import { useCart } from "@/hooks/useCart";
 import { CartDrawer } from "@/components/cart/CartDrawer";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ShoppingCart, User, LogOut, Settings, ChefHat, Menu, X } from "lucide-react";
 
 export function Header() {
@@ -14,6 +14,8 @@ export function Header() {
   const [cartOpen, setCartOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   return (
     <>
@@ -45,7 +47,7 @@ export function Header() {
               aria-label="Abrir carrinho"
             >
               <ShoppingCart size={20} className="text-neutral-700" />
-              {itemCount() > 0 && (
+              {mounted && itemCount() > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 bg-brand text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold leading-none">
                   {itemCount() > 9 ? "9+" : itemCount()}
                 </span>

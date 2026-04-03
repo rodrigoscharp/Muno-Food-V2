@@ -20,7 +20,7 @@ export default async function MenuPage() {
     <div className="min-h-screen bg-neutral-50">
       {nonEmpty.length > 0 ? (
         <>
-          <CategoryNav categories={nonEmpty} />
+          <CategoryNav categories={nonEmpty.map(({ id, name, slug }) => ({ id, name, slug }))} />
           <div className="max-w-5xl mx-auto px-4 py-8 space-y-12">
             {nonEmpty.map((category) => (
               <section key={category.id} id={category.slug}>
