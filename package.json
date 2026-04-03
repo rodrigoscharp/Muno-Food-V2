@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "node node_modules/next/dist/bin/next dev",
-    "build": "node node_modules/next/dist/bin/next build",
+    "build": "prisma generate && node node_modules/next/dist/bin/next build",
     "start": "node node_modules/next/dist/bin/next start",
+    "postinstall": "prisma generate",
     "lint": "eslint",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
