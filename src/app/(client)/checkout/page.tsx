@@ -9,21 +9,31 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { formatCurrency } from "@/lib/utils";
 import { PaymentMethodSelector } from "@/components/checkout/PaymentMethodSelector";
 import { PaymentMethod } from "@/types";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Store, Truck } from "lucide-react";
 import Link from "next/link";
+
+const DELIVERY_FEE = 10;
 
 const schema = z.object({
   customerName: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   customerPhone: z.string().min(8, "Telefone inválido").optional().or(z.literal("")),
   notes: z.string().optional(),
+  // address fields
+  rua: z.string().optional(),
+  numero: z.string().optional(),
+  bairro: z.string().optional(),
+  cidade: z.string().optional(),
+  complemento: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
+type DeliveryType = "PICKUP" | "DELIVERY";
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, total, clearCart } = useCart();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("PIX");
+  const [deliveryType, setDeliveryType] = useState<DeliveryType>("PICKUP");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -44,12 +54,30 @@ export default function CheckoutPage() {
     );
   }
 
+  const itemsTotal = total();
+  const deliveryFee = deliveryType === "DELIVERY" ? DELIVERY_FEE : 0;
+  const grandTotal = itemsTotal + deliveryFee;
+
   async function onSubmit(data: FormData) {
+    if (deliveryType === "DELIVERY" && (!data.rua || !data.numero || !data.bairro || !data.cidade)) {
+      setError("Preencha o endereço completo para entrega.");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
+    let deliveryAddress: string | undefined;
+    if (deliveryType === "DELIVERY") {
+      deliveryAddress = [
+        `${data.rua}, ${data.numero}`,
+        data.complemento,
+        data.bairro,
+        data.cidade,
+      ].filter(Boolean).join(" - ");
+    }
+
     try {
-      // 1. Create order
       const orderRes = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -63,13 +91,17 @@ export default function CheckoutPage() {
           notes: data.notes,
           customerName: data.customerName,
           customerPhone: data.customerPhone,
+          deliveryType,
+          deliveryAddress,
         }),
       });
 
-      if (!orderRes.ok) throw new Error("Erro ao criar pedido");
+      if (!orderRes.ok) {
+        const errBody = await orderRes.json().catch(() => ({}));
+        throw new Error(errBody?.error ? JSON.stringify(errBody.error) : "Erro ao criar pedido");
+      }
       const order = await orderRes.json();
 
-      // 2. If PIX or CREDIT_CARD, create payment
       if (paymentMethod === "PIX" || paymentMethod === "CREDIT_CARD") {
         const paymentRes = await fetch("/api/payments/mercadopago", {
           method: "POST",
@@ -89,11 +121,9 @@ export default function CheckoutPage() {
         if (paymentMethod === "PIX") {
           router.push(`/track/${order.id}?pix=${encodeURIComponent(payment.pixQrCode)}&copy=${encodeURIComponent(payment.pixCopyPaste)}`);
         } else {
-          // Credit card: redirect to MP checkout
           window.location.href = payment.checkoutUrl;
         }
       } else {
-        // Cash payment
         clearCart();
         router.push(`/track/${order.id}`);
       }
@@ -118,14 +148,93 @@ export default function CheckoutPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Left: form */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          {/* Delivery / Pickup selector */}
+          <div className="bg-white rounded-xl border border-neutral-200 p-5 space-y-4">
+            <h2 className="font-semibold text-neutral-900">Como deseja receber?</h2>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setDeliveryType("PICKUP")}
+                className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition ${
+                  deliveryType === "PICKUP"
+                    ? "border-brand bg-brand-light text-brand"
+                    : "border-neutral-200 text-neutral-500 hover:border-neutral-300"
+                }`}
+              >
+                <Store size={22} />
+                <span className="text-sm font-semibold">Retirar no local</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeliveryType("DELIVERY")}
+                className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition ${
+                  deliveryType === "DELIVERY"
+                    ? "border-brand bg-brand-light text-brand"
+                    : "border-neutral-200 text-neutral-500 hover:border-neutral-300"
+                }`}
+              >
+                <Truck size={22} />
+                <span className="text-sm font-semibold">Entrega</span>
+              </button>
+            </div>
+
+            {/* Address fields — only when DELIVERY */}
+            {deliveryType === "DELIVERY" && (
+              <div className="space-y-3 pt-1">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-neutral-600 mb-1">Rua *</label>
+                    <input
+                      {...register("rua")}
+                      placeholder="Rua das Flores"
+                      className="w-full px-3 py-2 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-600 mb-1">Número *</label>
+                    <input
+                      {...register("numero")}
+                      placeholder="123"
+                      className="w-full px-3 py-2 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-neutral-600 mb-1">Complemento (opcional)</label>
+                  <input
+                    {...register("complemento")}
+                    placeholder="Apto 12, Bloco B"
+                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-600 mb-1">Bairro *</label>
+                    <input
+                      {...register("bairro")}
+                      placeholder="Centro"
+                      className="w-full px-3 py-2 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-600 mb-1">Cidade *</label>
+                    <input
+                      {...register("cidade")}
+                      placeholder="Ubatuba"
+                      className="w-full px-3 py-2 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Customer info */}
           <div className="bg-white rounded-xl border border-neutral-200 p-5 space-y-4">
             <h2 className="font-semibold text-neutral-900">Seus dados</h2>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Nome *
-              </label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Nome *</label>
               <input
                 {...register("customerName")}
                 placeholder="Seu nome"
@@ -137,9 +246,7 @@ export default function CheckoutPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Telefone (opcional)
-              </label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Telefone (opcional)</label>
               <input
                 {...register("customerPhone")}
                 placeholder="(11) 99999-9999"
@@ -151,9 +258,7 @@ export default function CheckoutPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Observações (opcional)
-              </label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Observações (opcional)</label>
               <textarea
                 {...register("notes")}
                 placeholder="Sem cebola, ponto da carne, etc."
@@ -195,9 +300,7 @@ export default function CheckoutPage() {
             {items.map((item) => (
               <li key={item.id} className="flex items-start justify-between gap-2">
                 <div className="flex gap-2 min-w-0">
-                  <span className="text-sm font-bold text-brand flex-shrink-0">
-                    {item.quantity}x
-                  </span>
+                  <span className="text-sm font-bold text-brand flex-shrink-0">{item.quantity}x</span>
                   <span className="text-sm text-neutral-800 truncate">{item.name}</span>
                 </div>
                 <span className="text-sm font-medium text-neutral-700 flex-shrink-0">
@@ -206,9 +309,21 @@ export default function CheckoutPage() {
               </li>
             ))}
           </ul>
-          <div className="border-t border-neutral-100 pt-3 flex items-center justify-between">
-            <span className="font-semibold text-neutral-700">Total</span>
-            <span className="text-xl font-bold text-neutral-900">{formatCurrency(total())}</span>
+          <div className="border-t border-neutral-100 pt-3 space-y-1.5">
+            <div className="flex items-center justify-between text-sm text-neutral-500">
+              <span>Subtotal</span>
+              <span>{formatCurrency(itemsTotal)}</span>
+            </div>
+            {deliveryType === "DELIVERY" && (
+              <div className="flex items-center justify-between text-sm text-neutral-500">
+                <span>Taxa de entrega</span>
+                <span>{formatCurrency(DELIVERY_FEE)}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between pt-1">
+              <span className="font-semibold text-neutral-700">Total</span>
+              <span className="text-xl font-bold text-neutral-900">{formatCurrency(grandTotal)}</span>
+            </div>
           </div>
         </div>
       </div>

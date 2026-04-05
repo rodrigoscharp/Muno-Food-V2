@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth";
 import { withErrorHandling } from "@/lib/api";
 import { z } from "zod";
 
+const DELIVERY_FEE = 10;
+
 const orderSchema = z.object({
   items: z.array(
     z.object({
@@ -16,6 +18,8 @@ const orderSchema = z.object({
   notes: z.string().optional(),
   customerName: z.string().optional(),
   customerPhone: z.string().optional(),
+  deliveryType: z.enum(["PICKUP", "DELIVERY"]).default("PICKUP"),
+  deliveryAddress: z.string().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -74,17 +78,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
     }
 
-    const { items, paymentMethod, notes, customerName, customerPhone } = parsed.data;
+    const { items, paymentMethod, notes, customerName, customerPhone, deliveryType, deliveryAddress } = parsed.data;
 
     const menuItems = await prisma.menuItem.findMany({
       where: { id: { in: items.map((i) => i.menuItemId) } },
     });
 
-    const total = items.reduce((sum, orderItem) => {
+    const itemsTotal = items.reduce((sum, orderItem) => {
       const menuItem = menuItems.find((m) => m.id === orderItem.menuItemId);
       if (!menuItem) return sum;
       return sum + Number(menuItem.price) * orderItem.quantity;
     }, 0);
+
+    const deliveryFee = deliveryType === "DELIVERY" ? DELIVERY_FEE : 0;
+    const total = itemsTotal + deliveryFee;
 
     const order = await prisma.order.create({
       data: {
@@ -92,6 +99,9 @@ export async function POST(req: NextRequest) {
         notes,
         customerName,
         customerPhone,
+        deliveryType,
+        deliveryAddress: deliveryType === "DELIVERY" ? deliveryAddress : null,
+        deliveryFee,
         total,
         userId: session?.user.id ?? null,
         items: {
