@@ -3,14 +3,14 @@
 import { useKitchenOrders } from "@/hooks/useKitchenOrders";
 import { formatCurrency, ORDER_STATUS_LABELS } from "@/lib/utils";
 import { OrderStatus, OrderWithItems } from "@/types";
-import { Clock, ChefHat, CheckCircle } from "lucide-react";
+import { Clock, ChefHat, CheckCircle, RefreshCw, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 const KITCHEN_COLUMNS: { status: OrderStatus; label: string; icon: React.ReactNode; color: string }[] = [
-  { status: "PENDING", label: "Pendente", icon: <Clock size={16} />, color: "yellow" },
-  { status: "CONFIRMED", label: "Confirmado", icon: <Clock size={16} />, color: "blue" },
-  { status: "IN_PREPARATION", label: "Em Preparo", icon: <ChefHat size={16} />, color: "orange" },
-  { status: "READY", label: "Pronto", icon: <CheckCircle size={16} />, color: "green" },
+  { status: "PENDING", label: "Pendente", icon: <Clock size={15} />, color: "yellow" },
+  { status: "CONFIRMED", label: "Confirmado", icon: <Clock size={15} />, color: "blue" },
+  { status: "IN_PREPARATION", label: "Em Preparo", icon: <ChefHat size={15} />, color: "orange" },
+  { status: "READY", label: "Pronto", icon: <CheckCircle size={15} />, color: "green" },
 ];
 
 const NEXT_STATUS: Record<string, OrderStatus> = {
@@ -21,10 +21,10 @@ const NEXT_STATUS: Record<string, OrderStatus> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  yellow: "border-yellow-400 bg-yellow-950/20",
-  blue: "border-blue-400 bg-blue-950/20",
-  orange: "border-orange-400 bg-orange-950/20",
-  green: "border-green-400 bg-green-950/20",
+  yellow: "border-yellow-500/40 bg-yellow-500/5",
+  blue: "border-blue-500/40 bg-blue-500/5",
+  orange: "border-orange-500/40 bg-orange-500/5",
+  green: "border-green-500/40 bg-green-500/5",
 };
 
 const BADGE_COLORS: Record<string, string> = {
@@ -34,8 +34,15 @@ const BADGE_COLORS: Record<string, string> = {
   green: "bg-green-400/20 text-green-300",
 };
 
+const HEADER_COLORS: Record<string, string> = {
+  yellow: "text-yellow-400",
+  blue: "text-blue-400",
+  orange: "text-orange-400",
+  green: "text-green-400",
+};
+
 export default function KitchenPage() {
-  const { orders, loading } = useKitchenOrders();
+  const { orders, loading, error, refetch } = useKitchenOrders();
 
   async function advanceStatus(order: OrderWithItems) {
     const nextStatus = NEXT_STATUS[order.status];
@@ -46,8 +53,12 @@ export default function KitchenPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: nextStatus }),
     });
+
     if (res.ok) {
-      toast.success(`Pedido #${order.id.slice(-6).toUpperCase()} → ${ORDER_STATUS_LABELS[nextStatus]}`);
+      toast.success(`#${order.id.slice(-6).toUpperCase()} → ${ORDER_STATUS_LABELS[nextStatus]}`);
+      refetch();
+    } else {
+      toast.error("Erro ao atualizar pedido");
     }
   }
 
@@ -57,113 +68,159 @@ export default function KitchenPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "CANCELLED" }),
     });
-    if (res.ok) toast.error(`Pedido #${orderId.slice(-6).toUpperCase()} cancelado`);
+    if (res.ok) {
+      toast.error(`Pedido #${orderId.slice(-6).toUpperCase()} cancelado`);
+      refetch();
+    } else {
+      toast.error("Erro ao cancelar pedido");
+    }
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64 text-neutral-500">
+      <div className="flex items-center justify-center h-64 gap-3 text-neutral-500">
+        <RefreshCw size={18} className="animate-spin" />
         Carregando pedidos...
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {KITCHEN_COLUMNS.map((col) => {
-        const colOrders = orders.filter((o) => o.status === col.status);
-        return (
-          <div
-            key={col.status}
-            className={`rounded-xl border-2 ${STATUS_COLORS[col.color]} p-4 flex flex-col gap-3`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-neutral-300 font-semibold text-sm">
-                {col.icon}
-                {col.label}
-              </div>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${BADGE_COLORS[col.color]}`}>
-                {colOrders.length}
-              </span>
-            </div>
+    <div className="flex flex-col gap-4">
+      {/* Error banner */}
+      {error && (
+        <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-2.5">
+          <AlertTriangle size={15} />
+          {error}
+          <button onClick={refetch} className="ml-auto underline hover:no-underline text-xs">
+            Tentar novamente
+          </button>
+        </div>
+      )}
 
-            <div className="space-y-3">
-              {colOrders.map((order) => (
-                <div
-                  key={order.id}
-                  className="bg-neutral-900 rounded-lg p-3 border border-neutral-800"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-mono text-xs text-neutral-400">
-                      #{order.id.slice(-6).toUpperCase()}
-                    </span>
-                    <span className="text-xs text-neutral-400">
-                      {new Date(order.createdAt).toLocaleTimeString("pt-BR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  </div>
-
-                  {(order.customerName || order.user?.name) && (
-                    <p className="text-xs text-neutral-300 mb-2">
-                      {order.user?.name || order.customerName}
-                    </p>
-                  )}
-
-                  <ul className="space-y-1 mb-3">
-                    {order.items.map((item) => (
-                      <li key={item.id} className="text-sm text-white">
-                        <span className="font-bold text-brand-muted">{item.quantity}x</span>{" "}
-                        {item.menuItem.name}
-                        {item.notes && (
-                          <p className="text-xs text-neutral-500 ml-4">{item.notes}</p>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-
-                  {order.notes && (
-                    <p className="text-xs text-yellow-400 bg-yellow-400/10 rounded px-2 py-1 mb-2">
-                      {order.notes}
-                    </p>
-                  )}
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-neutral-300">
-                      {formatCurrency(order.total)}
-                    </span>
-                    <div className="flex gap-1">
-                      {order.status !== "READY" && (
-                        <button
-                          onClick={() => cancelOrder(order.id)}
-                          className="text-xs px-2 py-1 rounded bg-neutral-800 text-neutral-400 hover:bg-red-900 hover:text-red-300 transition"
-                        >
-                          Cancelar
-                        </button>
-                      )}
-                      {NEXT_STATUS[order.status] && (
-                        <button
-                          onClick={() => advanceStatus(order)}
-                          className="text-xs px-2 py-1 rounded bg-brand hover:bg-brand-dark text-white font-medium transition"
-                        >
-                          {order.status === "READY" ? "Entregar" : "Avançar"}
-                        </button>
-                      )}
-                    </div>
-                  </div>
+      {/* Kanban */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {KITCHEN_COLUMNS.map((col) => {
+          const colOrders = orders.filter((o) => o.status === col.status);
+          return (
+            <div
+              key={col.status}
+              className={`rounded-xl border ${STATUS_COLORS[col.color]} flex flex-col gap-3 p-4 min-h-48`}
+            >
+              {/* Column header */}
+              <div className="flex items-center justify-between">
+                <div className={`flex items-center gap-2 font-semibold text-sm ${HEADER_COLORS[col.color]}`}>
+                  {col.icon}
+                  {col.label}
                 </div>
-              ))}
+                <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${BADGE_COLORS[col.color]}`}>
+                  {colOrders.length}
+                </span>
+              </div>
 
-              {colOrders.length === 0 && (
-                <p className="text-xs text-neutral-600 text-center py-4">
-                  Nenhum pedido
-                </p>
-              )}
+              {/* Orders */}
+              <div className="space-y-3">
+                {colOrders.map((order) => (
+                  <OrderCard
+                    key={order.id}
+                    order={order}
+                    onAdvance={() => advanceStatus(order)}
+                    onCancel={() => cancelOrder(order.id)}
+                    hasNext={!!NEXT_STATUS[order.status]}
+                  />
+                ))}
+
+                {colOrders.length === 0 && (
+                  <p className="text-xs text-neutral-600 text-center py-6">
+                    Nenhum pedido
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function OrderCard({
+  order,
+  onAdvance,
+  onCancel,
+  hasNext,
+}: {
+  order: OrderWithItems;
+  onAdvance: () => void;
+  onCancel: () => void;
+  hasNext: boolean;
+}) {
+  const elapsed = Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 60_000);
+
+  return (
+    <div className="bg-neutral-900 rounded-lg p-3 border border-neutral-800 flex flex-col gap-2">
+      {/* ID + hora */}
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-xs font-bold text-neutral-300">
+          #{order.id.slice(-6).toUpperCase()}
+        </span>
+        <span className={`text-xs flex items-center gap-1 ${elapsed > 20 ? "text-red-400" : "text-neutral-500"}`}>
+          <Clock size={10} />
+          {elapsed}min
+        </span>
+      </div>
+
+      {/* Cliente */}
+      {(order.customerName || order.user?.name) && (
+        <p className="text-xs text-neutral-400 truncate">
+          {order.user?.name || order.customerName}
+        </p>
+      )}
+
+      {/* Itens */}
+      <ul className="space-y-1">
+        {order.items.map((item) => (
+          <li key={item.id} className="text-sm text-white leading-snug">
+            <span className="font-bold text-brand-muted">{item.quantity}×</span>{" "}
+            {item.menuItem.name}
+            {item.notes && (
+              <p className="text-xs text-neutral-500 ml-4 italic">{item.notes}</p>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      {/* Obs do pedido */}
+      {order.notes && (
+        <p className="text-xs text-yellow-400 bg-yellow-400/10 rounded px-2 py-1">
+          ⚠ {order.notes}
+        </p>
+      )}
+
+      {/* Rodapé: valor + ações */}
+      <div className="flex items-center justify-between pt-1 border-t border-neutral-800 mt-1">
+        <span className="text-xs font-semibold text-neutral-400">
+          {formatCurrency(order.total)}
+        </span>
+        <div className="flex gap-1">
+          {order.status !== "READY" && (
+            <button
+              onClick={onCancel}
+              className="text-xs px-2 py-1 rounded bg-neutral-800 text-neutral-400 hover:bg-red-900/60 hover:text-red-300 transition"
+            >
+              Cancelar
+            </button>
+          )}
+          {hasNext && (
+            <button
+              onClick={onAdvance}
+              className="text-xs px-2.5 py-1 rounded bg-brand hover:bg-brand-dark text-white font-semibold transition"
+            >
+              {order.status === "READY" ? "Entregar" : "Avançar →"}
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
