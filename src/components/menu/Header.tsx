@@ -20,9 +20,16 @@ export function Header() {
   return (
     <>
       <header className="sticky top-8 z-40 bg-white border-b border-neutral-200 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
-          <Link href="/" className="shrink-0">
-            <Image src="/munowbg.png" alt="MUNO" width={160} height={60} className="h-14 w-auto object-contain" priority />
+        <div className="max-w-5xl mx-auto px-4 h-20 flex items-center justify-between gap-4">
+          <Link href="/" className="shrink-0 flex items-center gap-3">
+            <Image src="/munowbg.png" alt="MUNO" width={180} height={68} className="h-10 sm:h-16 w-auto object-contain" priority />
+            <div className="flex flex-col justify-center leading-tight">
+              <span className="text-sm sm:text-base font-bold text-neutral-900 tracking-tight">Muno Food Restaurante</span>
+              <span className="text-[11px] sm:text-xs text-neutral-500 flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                Rua Paraty 1772, Ubatuba-SP
+              </span>
+            </div>
           </Link>
 
           {/* Desktop nav */}
