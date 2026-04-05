@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { withErrorHandling } from "@/lib/api";
 import { z } from "zod";
 
 const orderSchema = z.object({
@@ -18,101 +19,96 @@ const orderSchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  const { searchParams } = new URL(req.url);
-  const isKitchen = searchParams.get("kitchen") === "true";
+  return withErrorHandling(async () => {
+    const session = await auth();
+    const { searchParams } = new URL(req.url);
+    const isKitchen = searchParams.get("kitchen") === "true";
 
-  // Kitchen/Admin: all active orders
-  if (isKitchen) {
-    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "KITCHEN")) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+    if (isKitchen) {
+      if (!session || (session.user.role !== "ADMIN" && session.user.role !== "KITCHEN")) {
+        return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+      }
+      const orders = await prisma.order.findMany({
+        where: { status: { notIn: ["DELIVERED", "CANCELLED"] } },
+        include: {
+          items: { include: { menuItem: true } },
+          user: { select: { id: true, name: true, email: true } },
+        },
+        orderBy: { createdAt: "asc" },
+      });
+      return NextResponse.json(orders);
+    }
+
+    if (session?.user.role === "ADMIN") {
+      const orders = await prisma.order.findMany({
+        include: {
+          items: { include: { menuItem: true } },
+          user: { select: { id: true, name: true, email: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      });
+      return NextResponse.json(orders);
+    }
+
+    if (!session) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
     const orders = await prisma.order.findMany({
-      where: {
-        status: { notIn: ["DELIVERED", "CANCELLED"] },
-      },
-      include: {
-        items: { include: { menuItem: true } },
-        user: { select: { id: true, name: true, email: true } },
-      },
-      orderBy: { createdAt: "asc" },
-    });
-    return NextResponse.json(orders);
-  }
-
-  // Admin: all orders with filters
-  if (session?.user.role === "ADMIN") {
-    const orders = await prisma.order.findMany({
-      include: {
-        items: { include: { menuItem: true } },
-        user: { select: { id: true, name: true, email: true } },
-      },
+      where: { userId: session.user.id },
+      include: { items: { include: { menuItem: true } } },
       orderBy: { createdAt: "desc" },
-      take: 100,
     });
     return NextResponse.json(orders);
-  }
-
-  // Customer: their own orders
-  if (!session) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  }
-
-  const orders = await prisma.order.findMany({
-    where: { userId: session.user.id },
-    include: { items: { include: { menuItem: true } } },
-    orderBy: { createdAt: "desc" },
   });
-  return NextResponse.json(orders);
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
+  return withErrorHandling(async () => {
+    const session = await auth();
 
-  const body = await req.json();
-  const parsed = orderSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
-  }
+    const body = await req.json();
+    const parsed = orderSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
+    }
 
-  const { items, paymentMethod, notes, customerName, customerPhone } = parsed.data;
+    const { items, paymentMethod, notes, customerName, customerPhone } = parsed.data;
 
-  // Fetch prices from DB to avoid client-side tampering
-  const menuItems = await prisma.menuItem.findMany({
-    where: { id: { in: items.map((i) => i.menuItemId) } },
-  });
+    const menuItems = await prisma.menuItem.findMany({
+      where: { id: { in: items.map((i) => i.menuItemId) } },
+    });
 
-  const total = items.reduce((sum, orderItem) => {
-    const menuItem = menuItems.find((m) => m.id === orderItem.menuItemId);
-    if (!menuItem) return sum;
-    return sum + Number(menuItem.price) * orderItem.quantity;
-  }, 0);
+    const total = items.reduce((sum, orderItem) => {
+      const menuItem = menuItems.find((m) => m.id === orderItem.menuItemId);
+      if (!menuItem) return sum;
+      return sum + Number(menuItem.price) * orderItem.quantity;
+    }, 0);
 
-  const order = await prisma.order.create({
-    data: {
-      paymentMethod,
-      notes,
-      customerName,
-      customerPhone,
-      total,
-      userId: session?.user.id ?? null,
-      items: {
-        create: items.map((item) => {
-          const menuItem = menuItems.find((m) => m.id === item.menuItemId)!;
-          return {
-            menuItemId: item.menuItemId,
-            quantity: item.quantity,
-            unitPrice: menuItem.price,
-            notes: item.notes,
-          };
-        }),
+    const order = await prisma.order.create({
+      data: {
+        paymentMethod,
+        notes,
+        customerName,
+        customerPhone,
+        total,
+        userId: session?.user.id ?? null,
+        items: {
+          create: items.map((item) => {
+            const menuItem = menuItems.find((m) => m.id === item.menuItemId)!;
+            return {
+              menuItemId: item.menuItemId,
+              quantity: item.quantity,
+              unitPrice: menuItem.price,
+              notes: item.notes,
+            };
+          }),
+        },
       },
-    },
-    include: {
-      items: { include: { menuItem: true } },
-    },
-  });
+      include: { items: { include: { menuItem: true } } },
+    });
 
-  return NextResponse.json(order, { status: 201 });
+    return NextResponse.json(order, { status: 201 });
+  });
 }

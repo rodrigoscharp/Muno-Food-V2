@@ -5,13 +5,18 @@ import { ProductCard } from "@/components/menu/ProductCard";
 import { MenuItemWithCategory } from "@/types";
 
 const getMenu = unstable_cache(
-  async () =>
-    prisma.category.findMany({
-      orderBy: { position: "asc" },
-      include: {
-        items: { where: { available: true }, orderBy: { name: "asc" } },
-      },
-    }),
+  async () => {
+    try {
+      return await prisma.category.findMany({
+        orderBy: { position: "asc" },
+        include: {
+          items: { where: { available: true }, orderBy: { name: "asc" } },
+        },
+      });
+    } catch {
+      return [];
+    }
+  },
   ["menu"],
   { revalidate: 60 }
 );

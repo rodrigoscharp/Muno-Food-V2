@@ -1,27 +1,24 @@
 /**
- * Garante que os pacotes nativos corretos estejam instalados após npm install.
+ * Garante que lightningcss funcione para QUALQUER arquitetura (x64 e arm64).
  *
- * Contexto: Node.js roda como x64 (Rosetta) nesta máquina.
- * - lightningcss-darwin-x64 é necessário para webpack/PostCSS (processo x64)
- * - @next/swc-wasm-nodejs é necessário como fallback do compilador SWC
+ * Estratégia definitiva: copia os binários .node diretamente para dentro do
+ * diretório node_modules/lightningcss/ como fallback permanente.
  *
- * O --force no install de @next/swc-wasm-nodejs pode trocar o lightningcss
- * para arm64, por isso reinstalamos o x64 em seguida.
+ * O index.js do lightningcss já tem esse fallback embutido:
+ *   require(`../lightningcss.${platform}-${arch}.node`)
+ *
+ * Assim, mesmo que os pacotes lightningcss-darwin-* sejam removidos pelo npm,
+ * os arquivos .node dentro de lightningcss/ continuam funcionando.
  */
 const { execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
 const root = path.join(__dirname, "..");
 
-function forceInstall(pkg, version, cpu) {
-  const spec = `${pkg}@${version}`;
-  const cpuFlag = cpu ? `--cpu=${cpu}` : "";
-  console.log(`[setup] Instalando ${spec}...`);
-  execSync(`npm install --force ${cpuFlag} --no-save ${spec}`, {
-    stdio: "inherit",
-    cwd: root,
-  });
-}
+const lcDir = path.join(root, "node_modules", "lightningcss");
+const arm64Dest = path.join(lcDir, "lightningcss.darwin-arm64.node");
+const x64Dest = path.join(lcDir, "lightningcss.darwin-x64.node");
 
 function getVersion(pkgName) {
   const p = path.join(root, "node_modules", pkgName, "package.json");
@@ -30,18 +27,68 @@ function getVersion(pkgName) {
     : null;
 }
 
-// 1. Instalar @next/swc-wasm-nodejs se ausente
+function forceInstall(pkg, version, cpu) {
+  const cpuFlag = cpu ? `--cpu=${cpu}` : "";
+  execSync(`npm install --force ${cpuFlag} --no-save ${pkg}@${version}`, {
+    stdio: "inherit",
+    cwd: root,
+  });
+}
+
+function ensureLightningcss() {
+  if (!fs.existsSync(lcDir)) return;
+
+  const v = getVersion("lightningcss");
+  if (!v) return;
+
+  const needsArm64 = !fs.existsSync(arm64Dest);
+  const needsX64 = !fs.existsSync(x64Dest);
+
+  if (!needsArm64 && !needsX64) return; // tudo ok
+
+  console.log("[fix-lightningcss] Instalando binários nativos...");
+
+  const tmpDir = path.join(os.tmpdir(), `lc-fix-${Date.now()}`);
+  fs.mkdirSync(tmpDir, { recursive: true });
+
+  if (needsArm64) {
+    forceInstall("lightningcss-darwin-arm64", v, "arm64");
+    const src = path.join(root, "node_modules", "lightningcss-darwin-arm64", "lightningcss.darwin-arm64.node");
+    if (fs.existsSync(src)) {
+      // salva cópia no tmp antes de instalar x64 (que vai remover arm64)
+      fs.copyFileSync(src, path.join(tmpDir, "lightningcss.darwin-arm64.node"));
+    }
+  }
+
+  if (needsX64) {
+    forceInstall("lightningcss-darwin-x64", v, "x64");
+    const src = path.join(root, "node_modules", "lightningcss-darwin-x64", "lightningcss.darwin-x64.node");
+    if (fs.existsSync(src)) {
+      fs.copyFileSync(src, x64Dest);
+      console.log("[fix-lightningcss] lightningcss.darwin-x64.node instalado.");
+    }
+  }
+
+  // Restaurar arm64 do tmp (o install de x64 removeu o pacote arm64)
+  const arm64Tmp = path.join(tmpDir, "lightningcss.darwin-arm64.node");
+  if (fs.existsSync(arm64Tmp)) {
+    fs.copyFileSync(arm64Tmp, arm64Dest);
+    console.log("[fix-lightningcss] lightningcss.darwin-arm64.node instalado.");
+  }
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+}
+
+// 1. Garantir lightningcss para x64 e arm64
+ensureLightningcss();
+
+// 2. Instalar @next/swc-wasm-nodejs se ausente (fallback SWC)
 try {
   require("@next/swc-wasm-nodejs");
 } catch {
   const v = getVersion("next");
-  if (v) forceInstall("@next/swc-wasm-nodejs", v, null);
-}
-
-// 2. Garantir lightningcss-darwin-x64 (processo x64 / webpack)
-try {
-  require("lightningcss-darwin-x64");
-} catch {
-  const v = getVersion("lightningcss");
-  if (v) forceInstall("lightningcss-darwin-x64", v, "x64");
+  if (v) {
+    console.log("[fix-lightningcss] Instalando @next/swc-wasm-nodejs...");
+    forceInstall("@next/swc-wasm-nodejs", v, null);
+  }
 }

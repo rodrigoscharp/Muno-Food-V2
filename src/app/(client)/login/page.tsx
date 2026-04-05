@@ -53,7 +53,7 @@ export default function LoginPage() {
         <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-8">
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
-              <Image src="/logo.jpg" alt="MUNO" width={120} height={44} className="h-11 w-auto object-contain" />
+              <Image src="/munowbg.png" alt="MUNO" width={200} height={74} className="h-20 w-auto object-contain" />
             </div>
             <p className="text-neutral-500 text-sm">
               Entre na sua conta

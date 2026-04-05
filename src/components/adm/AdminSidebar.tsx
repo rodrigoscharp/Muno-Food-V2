@@ -23,7 +23,7 @@ export function AdminSidebar({ user }: Props) {
     <aside className="w-56 bg-white border-r border-neutral-200 flex flex-col shrink-0">
       <div className="px-6 py-5 border-b border-neutral-100">
         <Link href="/" className="block">
-          <Image src="/logo.jpg" alt="MUNO" width={80} height={30} className="h-8 w-auto object-contain" />
+          <Image src="/munowbg.png" alt="MUNO" width={140} height={52} className="h-12 w-auto object-contain" />
         </Link>
         <p className="text-xs text-neutral-400 mt-1">Painel Admin</p>
       </div>

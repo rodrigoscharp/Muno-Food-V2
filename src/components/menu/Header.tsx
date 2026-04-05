@@ -22,7 +22,7 @@ export function Header() {
       <header className="sticky top-8 z-40 bg-white border-b border-neutral-200 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
           <Link href="/" className="shrink-0">
-            <Image src="/logo.jpg" alt="MUNO" width={96} height={36} className="h-9 w-auto object-contain" priority />
+            <Image src="/munowbg.png" alt="MUNO" width={160} height={60} className="h-14 w-auto object-contain" priority />
           </Link>
 
           {/* Desktop nav */}
