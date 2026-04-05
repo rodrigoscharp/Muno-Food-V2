@@ -2,13 +2,15 @@
 
 import Image from "next/image";
 import { Plus } from "lucide-react";
+import { useRef } from "react";
 import { useCart } from "@/hooks/useCart";
+import { triggerCartFly } from "@/components/menu/CartFlyAnimation";
 import { formatCurrency } from "@/lib/utils";
 import { MenuItemWithCategory } from "@/types";
-import { toast } from "sonner";
 
 export function ProductCard({ item }: { item: MenuItemWithCategory }) {
   const addItem = useCart((s) => s.addItem);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   function handleAdd() {
     addItem({
@@ -17,7 +19,7 @@ export function ProductCard({ item }: { item: MenuItemWithCategory }) {
       price: item.price,
       imageUrl: item.imageUrl,
     });
-    toast.success(`${item.name} adicionado!`, { duration: 1500 });
+    if (btnRef.current) triggerCartFly(btnRef.current);
   }
 
   return (
@@ -61,9 +63,10 @@ export function ProductCard({ item }: { item: MenuItemWithCategory }) {
             {formatCurrency(item.price)}
           </span>
           <button
+            ref={btnRef}
             onClick={handleAdd}
             disabled={!item.available}
-            className="flex items-center justify-center w-8 h-8 rounded-full bg-brand hover:bg-brand-dark active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all duration-150 shadow-sm"
+            className="flex items-center justify-center w-8 h-8 rounded-full bg-brand hover:bg-brand-dark active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all duration-150 shadow-sm"
           >
             <Plus size={16} strokeWidth={2.5} />
           </button>

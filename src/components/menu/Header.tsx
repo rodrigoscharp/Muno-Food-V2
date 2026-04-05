@@ -5,20 +5,39 @@ import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 import { useCart } from "@/hooks/useCart";
 import { CartDrawer } from "@/components/cart/CartDrawer";
-import { useState, useEffect } from "react";
+import { CartFlyAnimation } from "@/components/menu/CartFlyAnimation";
+import { useState, useEffect, useRef } from "react";
 import { ShoppingCart, User, LogOut, Settings, ChefHat, Menu, X } from "lucide-react";
 
 export function Header() {
   const { data: session } = useSession();
-  const itemCount = useCart((s) => s.itemCount);
+
+  // Selector direto no valor — Zustand re-renderiza imediatamente ao mudar
+  const itemCount = useCart((s) =>
+    s.items.reduce((sum, item) => sum + item.quantity, 0)
+  );
+
   const [cartOpen, setCartOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const [bounce, setBounce] = useState(false);
+  const prevCount = useRef(itemCount);
+
+  // Dispara animação de bounce no badge quando a contagem aumenta
+  useEffect(() => {
+    if (itemCount > prevCount.current) {
+      setBounce(true);
+      const t = setTimeout(() => setBounce(false), 400);
+      prevCount.current = itemCount;
+      return () => clearTimeout(t);
+    }
+    prevCount.current = itemCount;
+  }, [itemCount]);
 
   return (
     <>
+      <CartFlyAnimation />
+
       <header className="sticky top-8 z-40 bg-white border-b border-neutral-200 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 h-20 flex items-center justify-between gap-4">
           <Link href="/" className="shrink-0 flex items-center gap-3">
@@ -47,16 +66,20 @@ export function Header() {
           </div>
 
           <div className="flex items-center gap-1 ml-auto">
-            {/* Cart */}
+            {/* Cart — id usado pela animação de partícula */}
             <button
+              id="cart-btn"
               onClick={() => setCartOpen(true)}
               className="relative flex items-center justify-center w-10 h-10 rounded-full hover:bg-neutral-100 transition"
               aria-label="Abrir carrinho"
             >
               <ShoppingCart size={20} className="text-neutral-700" />
-              {mounted && itemCount() > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-brand text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold leading-none">
-                  {itemCount() > 9 ? "9+" : itemCount()}
+              {itemCount > 0 && (
+                <span
+                  key={itemCount}
+                  className={`absolute -top-0.5 -right-0.5 bg-brand text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold leading-none ${bounce ? "animate-cart-bounce" : ""}`}
+                >
+                  {itemCount > 9 ? "9+" : itemCount}
                 </span>
               )}
             </button>
