@@ -34,18 +34,40 @@ export default async function MenuPage() {
           <div className="max-w-5xl mx-auto px-4 py-8 space-y-10">
             {nonEmpty.map((category) => (
               <section key={category.id} id={category.slug}>
-                <div className="flex items-center gap-3 mb-5">
-                  <span className="w-1 h-6 rounded-full bg-brand" />
-                  <h2 className="text-lg font-bold text-neutral-900 tracking-tight">
-                    {category.name}
-                  </h2>
+                <div className="flex items-center justify-between gap-3 mb-5">
+                  <div className="flex items-center gap-3">
+                    <span className="w-1 h-6 rounded-full bg-brand" />
+                    <h2 className="text-lg font-bold text-neutral-900 tracking-tight">
+                      {category.name}
+                    </h2>
+                    <span className="text-xs text-neutral-400 font-normal">
+                      {category.items.length} {category.items.length === 1 ? "item" : "itens"}
+                    </span>
+                  </div>
+                  {/* Hint de scroll — só aparece no mobile */}
+                  {category.items.length > 2 && (
+                    <span className="sm:hidden text-xs text-neutral-400 flex items-center gap-1 shrink-0">
+                      deslize
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </span>
+                  )}
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+
+                {/* Mobile: carrossel horizontal | Desktop: grid */}
+                <div className="
+                  flex gap-3 overflow-x-auto snap-x snap-mandatory pb-3 -mx-4 px-4
+                  no-scrollbar
+                  sm:grid sm:grid-cols-3 lg:grid-cols-4
+                  sm:gap-4 sm:overflow-visible sm:mx-0 sm:px-0 sm:pb-0
+                ">
                   {category.items.map((item) => (
-                    <ProductCard
-                      key={item.id}
-                      item={{ ...item, price: Number(item.price) } as unknown as MenuItemWithCategory}
-                    />
+                    <div key={item.id} className="shrink-0 w-44 snap-start sm:w-auto sm:shrink">
+                      <ProductCard
+                        item={{ ...item, price: Number(item.price) } as unknown as MenuItemWithCategory}
+                      />
+                    </div>
                   ))}
                 </div>
               </section>
