@@ -49,19 +49,25 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
             </div>
           ) : (
             items.map((item) => (
-              <div key={item.id} className="flex items-start gap-3">
+              <div key={item.cartId} className="flex items-start gap-3">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-neutral-900 truncate">
                     {item.name}
                   </p>
-                  <p className="text-xs text-neutral-500 mt-0.5">
-                    {formatCurrency(item.price)} cada
-                  </p>
+                  {item.notes ? (
+                    <p className="text-xs text-brand font-medium mt-0.5 italic truncate">
+                      {item.notes}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-neutral-500 mt-0.5">
+                      {formatCurrency(item.price)} cada
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                    onClick={() => updateQuantity(item.cartId, item.quantity - 1)}
                     className="w-7 h-7 rounded-full border border-neutral-200 flex items-center justify-center hover:bg-neutral-50 transition"
                   >
                     {item.quantity === 1 ? (
@@ -74,7 +80,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                     {item.quantity}
                   </span>
                   <button
-                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                    onClick={() => updateQuantity(item.cartId, item.quantity + 1)}
                     className="w-7 h-7 rounded-full border border-neutral-200 flex items-center justify-center hover:bg-neutral-50 transition"
                   >
                     <Plus size={12} />

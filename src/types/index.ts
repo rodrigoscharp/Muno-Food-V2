@@ -21,6 +21,7 @@ export type PaymentMethod = "PIX" | "CREDIT_CARD" | "CASH";
 export type PaymentStatus = "UNPAID" | "PAID" | "REFUNDED";
 
 export interface CartItem {
+  cartId: string; // unique per entry: id + notes
   id: string;
   name: string;
   price: number;

@@ -298,7 +298,7 @@ export default function CheckoutPage() {
           <h2 className="font-semibold text-neutral-900 mb-4">Resumo do Pedido</h2>
           <ul className="space-y-3 mb-4">
             {items.map((item) => (
-              <li key={item.id} className="flex items-start justify-between gap-2">
+              <li key={item.cartId} className="flex items-start justify-between gap-2">
                 <div className="flex gap-2 min-w-0">
                   <span className="text-sm font-bold text-brand flex-shrink-0">{item.quantity}x</span>
                   <span className="text-sm text-neutral-800 truncate">{item.name}</span>
