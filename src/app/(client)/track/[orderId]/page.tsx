@@ -27,14 +27,7 @@ export default async function TrackPage({ params, searchParams }: Props) {
   if (!order) notFound();
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8">
-      <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold text-neutral-900">
-          Pedido #{orderId.slice(-6).toUpperCase()}
-        </h1>
-        <p className="text-neutral-500 text-sm mt-1">Acompanhe seu pedido em tempo real</p>
-      </div>
-
+    <div className="max-w-lg mx-auto px-4 py-6">
       {/* Login prompt — exibido apenas para usuários não autenticados */}
       {!isLoggedIn && <LoginPromptBanner orderId={orderId} />}
 
@@ -45,12 +38,12 @@ export default async function TrackPage({ params, searchParams }: Props) {
 
       {/* Payment result feedback */}
       {payment === "success" && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 text-center">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4 text-center">
           <p className="text-green-700 font-medium">Pagamento aprovado!</p>
         </div>
       )}
       {payment === "failure" && (
-        <div className="bg-brand-light border border-brand-muted rounded-xl p-4 mb-6 text-center">
+        <div className="bg-brand-light border border-brand-muted rounded-xl p-4 mb-4 text-center">
           <p className="text-red-700 font-medium">Pagamento não aprovado. Tente novamente.</p>
         </div>
       )}

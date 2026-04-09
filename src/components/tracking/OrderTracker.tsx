@@ -2,67 +2,12 @@
 
 import { useOrderRealtime } from "@/hooks/useOrderRealtime";
 import { formatCurrency, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS } from "@/lib/utils";
-import { OrderStatus, OrderWithItems, PaymentMethod, PaymentStatus } from "@/types";
-import { CheckCircle, Clock, ChefHat, PackageCheck, Truck } from "lucide-react";
+import { OrderStatus, PaymentMethod, PaymentStatus } from "@/types";
 import { LiveDeliveryTracker } from "@/components/delivery/LiveDeliveryTracker";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import dynamic from "next/dynamic";
 
-function DeliveryEta({
-  estimatedDeliveryAt,
-  isRouteEta = false,
-}: {
-  estimatedDeliveryAt: Date;
-  isRouteEta?: boolean;
-}) {
-  const [remaining, setRemaining] = useState<number | null>(null);
-
-  useEffect(() => {
-    function calc() {
-      const diff = Math.round((estimatedDeliveryAt.getTime() - Date.now()) / 60_000);
-      setRemaining(diff);
-    }
-    calc();
-    const timer = setInterval(calc, 60_000);
-    return () => clearInterval(timer);
-  }, [estimatedDeliveryAt]);
-
-  const timeStr = estimatedDeliveryAt.toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  if (remaining === null) return null;
-
-  if (remaining <= 0) {
-    return (
-      <p className="text-xs text-neutral-500">
-        Previsão: <span className="font-semibold text-neutral-700">{timeStr}</span>
-        {isRouteEta && <span className="ml-1 text-neutral-400">· por rota</span>}
-      </p>
-    );
-  }
-
-  return (
-    <p className="text-xs text-neutral-500">
-      {isRouteEta ? "Chegada estimada:" : "Previsão:"}{" "}
-      <span className="font-semibold text-neutral-700">{timeStr}</span>{" "}
-      <span className="text-neutral-400">
-        (~{remaining} min{isRouteEta ? " · baseado na rota" : ""})
-      </span>
-    </p>
-  );
-}
-
-const STEPS: { status: OrderStatus; label: string; icon: React.ReactNode }[] = [
-  { status: "PENDING", label: "Recebido", icon: <Clock size={18} /> },
-  { status: "CONFIRMED", label: "Confirmado", icon: <CheckCircle size={18} /> },
-  { status: "IN_PREPARATION", label: "Preparando", icon: <ChefHat size={18} /> },
-  { status: "READY", label: "Pronto", icon: <PackageCheck size={18} /> },
-  { status: "OUT_FOR_DELIVERY", label: "Em Entrega", icon: <Truck size={18} /> },
-  { status: "DELIVERED", label: "Entregue", icon: <CheckCircle size={18} /> },
-];
-
-const STATUS_ORDER = ["PENDING", "CONFIRMED", "IN_PREPARATION", "READY", "OUT_FOR_DELIVERY", "DELIVERED"];
+// ─── Tipos ────────────────────────────────────────────────────────────────────
 
 interface OrderSummary {
   id: string;
@@ -91,134 +36,411 @@ interface Props {
   order: OrderSummary;
 }
 
-export function OrderTracker({ orderId, initialStatus, order }: Props) {
-  const { status: realtimeStatus, estimatedDeliveryAt: realtimeEta } = useOrderRealtime(orderId);
-  const currentStatus = realtimeStatus ?? initialStatus;
+// ─── Configuração dos status ───────────────────────────────────────────────────
 
-  // Usa a ETA calculada pela rota (realtime) se disponível, senão a estimativa inicial
-  const estimatedDeliveryAt =
-    realtimeEta ?? (order.estimatedDeliveryAt ? new Date(order.estimatedDeliveryAt) : null);
+const STATUS_CONFIG: Record<
+  OrderStatus,
+  { emoji: string; title: string; message: string; color: string; bg: string; ring: string }
+> = {
+  PENDING: {
+    emoji: "🧾",
+    title: "Pedido recebido",
+    message: "Aguardando confirmação do restaurante",
+    color: "text-amber-600",
+    bg: "bg-amber-50",
+    ring: "ring-amber-200",
+  },
+  CONFIRMED: {
+    emoji: "✅",
+    title: "Pedido confirmado",
+    message: "O restaurante confirmou seu pedido",
+    color: "text-blue-600",
+    bg: "bg-blue-50",
+    ring: "ring-blue-200",
+  },
+  IN_PREPARATION: {
+    emoji: "👨‍🍳",
+    title: "Em preparo",
+    message: "Nossa cozinha está preparando tudo com cuidado",
+    color: "text-orange-500",
+    bg: "bg-orange-50",
+    ring: "ring-orange-200",
+  },
+  READY: {
+    emoji: "📦",
+    title: "Pronto!",
+    message: "Pedido embalado e pronto para retirada",
+    color: "text-green-600",
+    bg: "bg-green-50",
+    ring: "ring-green-200",
+  },
+  OUT_FOR_DELIVERY: {
+    emoji: "🛵",
+    title: "A caminho!",
+    message: "Seu pedido está saindo para entrega agora",
+    color: "text-brand",
+    bg: "bg-red-50",
+    ring: "ring-red-200",
+  },
+  DELIVERED: {
+    emoji: "🎉",
+    title: "Entregue!",
+    message: "Bom apetite! Esperamos que aproveite",
+    color: "text-green-600",
+    bg: "bg-green-50",
+    ring: "ring-green-200",
+  },
+  CANCELLED: {
+    emoji: "✕",
+    title: "Cancelado",
+    message: "Este pedido foi cancelado",
+    color: "text-neutral-500",
+    bg: "bg-neutral-100",
+    ring: "ring-neutral-200",
+  },
+};
 
-  const isCancelled = currentStatus === "CANCELLED";
-  const currentIndex = STATUS_ORDER.indexOf(currentStatus);
+const STEPS: OrderStatus[] = [
+  "PENDING",
+  "CONFIRMED",
+  "IN_PREPARATION",
+  "READY",
+  "OUT_FOR_DELIVERY",
+  "DELIVERED",
+];
+
+const STEP_LABELS: Record<OrderStatus, string> = {
+  PENDING: "Recebido",
+  CONFIRMED: "Confirmado",
+  IN_PREPARATION: "Preparando",
+  READY: "Pronto",
+  OUT_FOR_DELIVERY: "Em entrega",
+  DELIVERED: "Entregue",
+  CANCELLED: "Cancelado",
+};
+
+// ─── Componente ETA ────────────────────────────────────────────────────────────
+
+function EtaDisplay({
+  estimatedDeliveryAt,
+  isRouteEta,
+}: {
+  estimatedDeliveryAt: Date;
+  isRouteEta: boolean;
+}) {
+  const [remaining, setRemaining] = useState<number | null>(null);
+
+  useEffect(() => {
+    const calc = () =>
+      setRemaining(Math.round((estimatedDeliveryAt.getTime() - Date.now()) / 60_000));
+    calc();
+    const t = setInterval(calc, 30_000);
+    return () => clearInterval(t);
+  }, [estimatedDeliveryAt]);
+
+  const timeStr = estimatedDeliveryAt.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  if (remaining === null) return null;
 
   return (
-    <div className="space-y-4">
-      {/* Status stepper */}
-      <div className="bg-white rounded-xl border border-neutral-200 p-6">
-        {isCancelled ? (
-          <div className="text-center py-4">
-            <p className="text-brand font-semibold text-lg">Pedido Cancelado</p>
-            <p className="text-neutral-400 text-sm mt-1">
-              Entre em contato conosco se tiver dúvidas.
-            </p>
-          </div>
-        ) : (
-          <div className="relative">
-            {/* Progress line */}
-            <div className="absolute top-5 left-5 right-5 h-0.5 bg-neutral-200 -z-0" />
+    <div className="mt-5 flex items-center justify-between bg-white/60 backdrop-blur-sm rounded-2xl px-4 py-3 border border-white/80">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
+          {isRouteEta ? "Chegada estimada · por rota" : "Previsão de entrega"}
+        </p>
+        <p className="text-2xl font-black text-neutral-900 mt-0.5 tabular-nums">{timeStr}</p>
+      </div>
+      {remaining > 0 && (
+        <div className="text-right">
+          <p className="text-3xl font-black text-brand tabular-nums leading-none">{remaining}</p>
+          <p className="text-[11px] text-neutral-400 font-medium mt-0.5">minutos</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Componente principal ──────────────────────────────────────────────────────
+
+export function OrderTracker({ orderId, initialStatus, order }: Props) {
+  const { status: realtimeStatus, estimatedDeliveryAt: realtimeEta } =
+    useOrderRealtime(orderId);
+  const currentStatus = realtimeStatus ?? initialStatus;
+
+  const estimatedDeliveryAt =
+    realtimeEta ??
+    (order.estimatedDeliveryAt ? new Date(order.estimatedDeliveryAt) : null);
+
+  const isCancelled = currentStatus === "CANCELLED";
+  const isDelivered = currentStatus === "DELIVERED";
+  const isOutForDelivery = currentStatus === "OUT_FOR_DELIVERY";
+  const currentIndex = STEPS.indexOf(currentStatus);
+  const cfg = STATUS_CONFIG[currentStatus];
+
+  // Pulsa o ícone quando o status muda
+  const [pulse, setPulse] = useState(false);
+  const prevStatus = useRef(currentStatus);
+  useEffect(() => {
+    if (currentStatus !== prevStatus.current) {
+      prevStatus.current = currentStatus;
+      setPulse(true);
+      const t = setTimeout(() => setPulse(false), 800);
+      return () => clearTimeout(t);
+    }
+  }, [currentStatus]);
+
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap');
+        .tracker-root { font-family: 'Outfit', sans-serif; }
+        @keyframes status-pop {
+          0%   { transform: scale(1); }
+          40%  { transform: scale(1.18); }
+          70%  { transform: scale(0.94); }
+          100% { transform: scale(1); }
+        }
+        @keyframes fade-slide-up {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes dot-ping {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50%       { transform: scale(1.6); opacity: 0; }
+        }
+        .status-pop { animation: status-pop 0.5s cubic-bezier(.36,.07,.19,.97); }
+        .fade-in    { animation: fade-slide-up 0.4s ease both; }
+        .dot-ping   { animation: dot-ping 1.5s ease-in-out infinite; }
+      `}</style>
+
+      <div className="tracker-root space-y-3">
+
+        {/* ── Hero do status ─────────────────────────────────────────────── */}
+        <div
+          className={`rounded-3xl p-6 transition-all duration-500 ${
+            isCancelled
+              ? "bg-neutral-100 border border-neutral-200"
+              : "bg-neutral-950 text-white"
+          }`}
+        >
+          {/* Ícone + live badge */}
+          <div className="flex items-start justify-between mb-4">
             <div
-              className="absolute top-5 left-5 h-0.5 bg-red-400 transition-all duration-700 -z-0"
-              style={{
-                width: `${(currentIndex / (STEPS.length - 1)) * (100 - (10 / STEPS.length) * 100)}%`,
-              }}
+              className={`relative w-16 h-16 rounded-2xl flex items-center justify-center text-3xl
+                ${isCancelled ? "bg-neutral-200" : "bg-white/10"}
+                ${pulse ? "status-pop" : ""}
+              `}
+            >
+              {cfg.emoji}
+              {/* Ping ao vivo — só nos status ativos */}
+              {!isCancelled && !isDelivered && (
+                <span className="absolute -top-1 -right-1 w-3 h-3">
+                  <span className="dot-ping absolute inset-0 rounded-full bg-brand opacity-75" />
+                  <span className="relative block w-3 h-3 rounded-full bg-brand" />
+                </span>
+              )}
+            </div>
+
+            {!isCancelled && !isDelivered && (
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-white/50 mt-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse inline-block" />
+                Ao vivo
+              </span>
+            )}
+          </div>
+
+          {/* Título e mensagem */}
+          <p
+            className={`text-[11px] font-semibold uppercase tracking-widest mb-1 ${
+              isCancelled ? "text-neutral-400" : "text-white/40"
+            }`}
+          >
+            Pedido #{orderId.slice(-6).toUpperCase()}
+          </p>
+          <h2
+            key={currentStatus}
+            className={`text-2xl font-black leading-tight fade-in ${
+              isCancelled ? "text-neutral-500" : "text-white"
+            }`}
+          >
+            {cfg.title}
+          </h2>
+          <p
+            className={`text-sm mt-1 leading-relaxed ${
+              isCancelled ? "text-neutral-400" : "text-white/60"
+            }`}
+          >
+            {cfg.message}
+          </p>
+
+          {/* ETA */}
+          {estimatedDeliveryAt && !isDelivered && !isCancelled && (
+            <EtaDisplay
+              estimatedDeliveryAt={estimatedDeliveryAt}
+              isRouteEta={isOutForDelivery && !!realtimeEta}
             />
+          )}
+        </div>
 
-            <div className="flex justify-between relative">
-              {STEPS.map((step, i) => {
-                const stepIndex = STATUS_ORDER.indexOf(step.status);
-                const isCompleted = stepIndex < currentIndex;
-                const isCurrent = stepIndex === currentIndex;
+        {/* ── Timeline vertical ──────────────────────────────────────────── */}
+        {!isCancelled && (
+          <div className="bg-white rounded-3xl border border-neutral-100 px-5 py-5">
+            <div className="relative">
+              {/* Linha de fundo */}
+              <div className="absolute left-[19px] top-3 bottom-3 w-px bg-neutral-100" />
+              {/* Linha de progresso */}
+              <div
+                className="absolute left-[19px] top-3 w-px bg-brand transition-all duration-700"
+                style={{
+                  height:
+                    currentIndex <= 0
+                      ? "0%"
+                      : `${(currentIndex / (STEPS.length - 1)) * 100}%`,
+                }}
+              />
 
-                return (
-                  <div key={step.status} className="flex flex-col items-center gap-2 w-16">
-                    <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
-                        isCompleted
-                          ? "bg-brand border-brand text-white"
-                          : isCurrent
-                          ? "bg-white border-red-400 text-brand shadow-md shadow-red-100"
-                          : "bg-white border-neutral-200 text-neutral-300"
-                      }`}
-                    >
-                      {step.icon}
+              <div className="space-y-0">
+                {STEPS.map((step, i) => {
+                  const isCompleted = i < currentIndex;
+                  const isCurrent = i === currentIndex;
+                  const isFuture = i > currentIndex;
+
+                  return (
+                    <div key={step} className="flex items-center gap-4 py-2.5 relative">
+                      {/* Dot */}
+                      <div className="relative z-10 flex-shrink-0">
+                        {isCompleted ? (
+                          <div className="w-10 h-10 rounded-full bg-brand flex items-center justify-center">
+                            <svg
+                              className="w-4 h-4 text-white"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth={3}
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          </div>
+                        ) : isCurrent ? (
+                          <div className="w-10 h-10 rounded-full bg-white border-2 border-brand flex items-center justify-center shadow-md shadow-red-100">
+                            <span className="text-lg">{STATUS_CONFIG[step].emoji}</span>
+                          </div>
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-neutral-50 border border-neutral-200 flex items-center justify-center">
+                            <span className="text-lg opacity-30">{STATUS_CONFIG[step].emoji}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Label */}
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className={`text-sm font-semibold leading-none ${
+                            isCompleted
+                              ? "text-neutral-400 line-through"
+                              : isCurrent
+                              ? "text-neutral-900"
+                              : "text-neutral-300"
+                          }`}
+                        >
+                          {STEP_LABELS[step]}
+                        </p>
+                        {isCurrent && (
+                          <p className="text-xs text-brand font-medium mt-0.5">
+                            Status atual
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Checkmark para completados */}
+                      {isCompleted && (
+                        <span className="text-xs text-neutral-300 font-medium">✓</span>
+                      )}
                     </div>
-                    <span
-                      className={`text-xs text-center leading-tight ${
-                        isCompleted || isCurrent ? "text-neutral-700 font-medium" : "text-neutral-400"
-                      }`}
-                    >
-                      {step.label}
-                    </span>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
 
-        {!isCancelled && (
-          <div className="mt-6 space-y-2 text-center">
-            <p className="text-sm font-medium text-neutral-700">
-              Status atual:{" "}
-              <span className="text-brand">{ORDER_STATUS_LABELS[currentStatus]}</span>
-            </p>
+        {/* ── Mapa ao vivo ───────────────────────────────────────────────── */}
+        {isOutForDelivery &&
+          order.deliveryType === "DELIVERY" &&
+          order.deliveryAddress && (
+            <LiveDeliveryTracker
+              orderId={orderId}
+              deliveryAddress={order.deliveryAddress}
+              initialLat={order.initialLat}
+              initialLng={order.initialLng}
+            />
+          )}
 
-            {/* Previsão de entrega */}
-            {estimatedDeliveryAt && currentStatus !== "DELIVERED" && (
-              <DeliveryEta
-                estimatedDeliveryAt={estimatedDeliveryAt}
-                isRouteEta={currentStatus === "OUT_FOR_DELIVERY" && !!realtimeEta}
-              />
-            )}
+        {/* ── Itens do pedido ────────────────────────────────────────────── */}
+        <div className="bg-white rounded-3xl border border-neutral-100 overflow-hidden">
+          <div className="px-5 pt-5 pb-2">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-4">
+              Itens do pedido
+            </p>
+            <ul className="space-y-3">
+              {order.items.map((item) => (
+                <li key={item.id} className="flex items-start gap-3">
+                  <span className="w-6 h-6 rounded-lg bg-red-50 text-brand text-xs font-black flex items-center justify-center flex-shrink-0 mt-0.5">
+                    {item.quantity}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-neutral-800 leading-snug">
+                      {item.menuItem.name}
+                    </p>
+                    {item.notes && (
+                      <p className="text-xs text-neutral-400 mt-0.5 italic">{item.notes}</p>
+                    )}
+                  </div>
+                  <span className="text-sm text-neutral-500 font-medium flex-shrink-0">
+                    {formatCurrency(item.unitPrice * item.quantity)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Total */}
+          <div className="mx-5 my-4 pt-4 border-t border-neutral-100 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-neutral-500">
+                {PAYMENT_METHOD_LABELS[order.paymentMethod]}
+              </span>
+              {order.paymentStatus === "PAID" && (
+                <span className="text-xs bg-green-50 text-green-600 font-semibold px-2 py-0.5 rounded-full">
+                  Pago ✓
+                </span>
+              )}
+            </div>
+            <span className="text-xl font-black text-neutral-900">
+              {formatCurrency(order.total)}
+            </span>
+          </div>
+        </div>
+
+        {/* ── Entregue ───────────────────────────────────────────────────── */}
+        {isDelivered && (
+          <div className="bg-green-50 rounded-3xl border border-green-100 px-5 py-5 text-center">
+            <p className="text-3xl mb-2">🎉</p>
+            <p className="font-black text-green-700 text-lg">Bom apetite!</p>
+            <p className="text-sm text-green-600 mt-1">
+              Obrigado por pedir no Muno. Volte sempre!
+            </p>
           </div>
         )}
+
       </div>
-
-      {/* Mapa ao vivo — exibido quando motoboy está a caminho */}
-      {(currentStatus === "OUT_FOR_DELIVERY") && order.deliveryType === "DELIVERY" && order.deliveryAddress && (
-        <LiveDeliveryTracker
-          orderId={orderId}
-          deliveryAddress={order.deliveryAddress}
-          initialLat={order.initialLat}
-          initialLng={order.initialLng}
-        />
-      )}
-
-      {/* Order details */}
-      <div className="bg-white rounded-xl border border-neutral-200 p-5">
-        <h3 className="font-semibold text-neutral-900 mb-3">Itens do Pedido</h3>
-        <ul className="space-y-2 mb-4">
-          {order.items.map((item) => (
-            <li key={item.id} className="flex items-start justify-between gap-2">
-              <div className="flex gap-2 min-w-0">
-                <span className="text-sm font-bold text-brand flex-shrink-0">
-                  {item.quantity}x
-                </span>
-                <div>
-                  <span className="text-sm text-neutral-800">{item.menuItem.name}</span>
-                  {item.notes && (
-                    <p className="text-xs text-neutral-400">{item.notes}</p>
-                  )}
-                </div>
-              </div>
-              <span className="text-sm text-neutral-600 flex-shrink-0">
-                {formatCurrency(item.unitPrice * item.quantity)}
-              </span>
-            </li>
-          ))}
-        </ul>
-
-        <div className="border-t border-neutral-100 pt-3 flex justify-between">
-          <div className="text-sm text-neutral-500">
-            <span>{PAYMENT_METHOD_LABELS[order.paymentMethod]}</span>
-            {order.paymentStatus === "PAID" && (
-              <span className="ml-2 text-green-600 font-medium">✓ Pago</span>
-            )}
-          </div>
-          <span className="font-bold text-neutral-900">{formatCurrency(order.total)}</span>
-        </div>
-      </div>
-    </div>
+    </>
   );
 }
