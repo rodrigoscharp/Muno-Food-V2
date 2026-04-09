@@ -93,6 +93,13 @@ export async function POST(req: NextRequest) {
     const deliveryFee = deliveryType === "DELIVERY" ? DELIVERY_FEE : 0;
     const total = itemsTotal + deliveryFee;
 
+    // Lê o tempo estimado de entrega configurado pelo admin
+    const timeSetting = await prisma.setting.findUnique({
+      where: { key: "delivery_time_minutes" },
+    });
+    const estimatedMinutes = timeSetting ? parseInt(timeSetting.value, 10) : 45;
+    const estimatedDeliveryAt = new Date(Date.now() + estimatedMinutes * 60_000);
+
     const order = await prisma.order.create({
       data: {
         paymentMethod,
@@ -103,6 +110,7 @@ export async function POST(req: NextRequest) {
         deliveryAddress: deliveryType === "DELIVERY" ? deliveryAddress : null,
         deliveryFee,
         total,
+        estimatedDeliveryAt,
         userId: session?.user.id ?? null,
         items: {
           create: items.map((item) => {

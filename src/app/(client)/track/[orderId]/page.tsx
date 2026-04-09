@@ -66,6 +66,7 @@ export default async function TrackPage({ params, searchParams }: Props) {
           paymentStatus: order.paymentStatus,
           total: Number(order.total),
           createdAt: order.createdAt,
+          estimatedDeliveryAt: order.estimatedDeliveryAt ?? null,
           deliveryAddress: order.deliveryAddress,
           deliveryType: order.deliveryType,
           initialLat: order.deliveryTracking?.lat ?? null,

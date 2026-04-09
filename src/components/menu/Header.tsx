@@ -7,7 +7,7 @@ import { useCart } from "@/hooks/useCart";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { CartFlyAnimation } from "@/components/menu/CartFlyAnimation";
 import { useState, useEffect, useRef } from "react";
-import { ShoppingCart, User, LogOut, Settings, ChefHat, Menu, X } from "lucide-react";
+import { ShoppingCart, User, LogOut, Settings, ChefHat, Menu, X, ClipboardList } from "lucide-react";
 
 export function Header() {
   const { data: session } = useSession();
@@ -99,6 +99,13 @@ export function Header() {
                     <p className="px-4 py-2 text-xs text-neutral-400 border-b border-neutral-100 truncate">
                       {session.user.email}
                     </p>
+                    <Link
+                      href="/pedidos"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2 w-full px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition"
+                    >
+                      <ClipboardList size={14} /> Meus Pedidos
+                    </Link>
                     <button
                       onClick={() => { setUserMenuOpen(false); signOut({ callbackUrl: "/" }); }}
                       className="flex items-center gap-2 w-full px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition"
@@ -138,12 +145,21 @@ export function Header() {
               </Link>
             )}
             {session ? (
-              <button
-                onClick={() => { setMobileMenuOpen(false); signOut({ callbackUrl: "/" }); }}
-                className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-neutral-700 hover:bg-neutral-100"
-              >
-                <LogOut size={15} /> Sair ({session.user.name})
-              </button>
+              <>
+                <Link
+                  href="/pedidos"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-neutral-700 hover:bg-neutral-100"
+                >
+                  <ClipboardList size={15} /> Meus Pedidos
+                </Link>
+                <button
+                  onClick={() => { setMobileMenuOpen(false); signOut({ callbackUrl: "/" }); }}
+                  className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-neutral-700 hover:bg-neutral-100"
+                >
+                  <LogOut size={15} /> Sair ({session.user.name})
+                </button>
+              </>
             ) : (
               <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-brand font-medium hover:bg-brand-light">
                 Entrar

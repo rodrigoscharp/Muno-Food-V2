@@ -5,6 +5,53 @@ import { formatCurrency, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS } from "@/li
 import { OrderStatus, OrderWithItems, PaymentMethod, PaymentStatus } from "@/types";
 import { CheckCircle, Clock, ChefHat, PackageCheck, Truck } from "lucide-react";
 import { LiveDeliveryTracker } from "@/components/delivery/LiveDeliveryTracker";
+import { useEffect, useState } from "react";
+
+function DeliveryEta({
+  estimatedDeliveryAt,
+  isRouteEta = false,
+}: {
+  estimatedDeliveryAt: Date;
+  isRouteEta?: boolean;
+}) {
+  const [remaining, setRemaining] = useState<number | null>(null);
+
+  useEffect(() => {
+    function calc() {
+      const diff = Math.round((estimatedDeliveryAt.getTime() - Date.now()) / 60_000);
+      setRemaining(diff);
+    }
+    calc();
+    const timer = setInterval(calc, 60_000);
+    return () => clearInterval(timer);
+  }, [estimatedDeliveryAt]);
+
+  const timeStr = estimatedDeliveryAt.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  if (remaining === null) return null;
+
+  if (remaining <= 0) {
+    return (
+      <p className="text-xs text-neutral-500">
+        Previsão: <span className="font-semibold text-neutral-700">{timeStr}</span>
+        {isRouteEta && <span className="ml-1 text-neutral-400">· por rota</span>}
+      </p>
+    );
+  }
+
+  return (
+    <p className="text-xs text-neutral-500">
+      {isRouteEta ? "Chegada estimada:" : "Previsão:"}{" "}
+      <span className="font-semibold text-neutral-700">{timeStr}</span>{" "}
+      <span className="text-neutral-400">
+        (~{remaining} min{isRouteEta ? " · baseado na rota" : ""})
+      </span>
+    </p>
+  );
+}
 
 const STEPS: { status: OrderStatus; label: string; icon: React.ReactNode }[] = [
   { status: "PENDING", label: "Recebido", icon: <Clock size={18} /> },
@@ -24,6 +71,7 @@ interface OrderSummary {
   paymentStatus: PaymentStatus;
   total: number;
   createdAt: Date;
+  estimatedDeliveryAt?: Date | null;
   deliveryAddress?: string | null;
   deliveryType?: string;
   initialLat?: number | null;
@@ -44,8 +92,12 @@ interface Props {
 }
 
 export function OrderTracker({ orderId, initialStatus, order }: Props) {
-  const { status: realtimeStatus } = useOrderRealtime(orderId);
+  const { status: realtimeStatus, estimatedDeliveryAt: realtimeEta } = useOrderRealtime(orderId);
   const currentStatus = realtimeStatus ?? initialStatus;
+
+  // Usa a ETA calculada pela rota (realtime) se disponível, senão a estimativa inicial
+  const estimatedDeliveryAt =
+    realtimeEta ?? (order.estimatedDeliveryAt ? new Date(order.estimatedDeliveryAt) : null);
 
   const isCancelled = currentStatus === "CANCELLED";
   const currentIndex = STATUS_ORDER.indexOf(currentStatus);
@@ -106,10 +158,20 @@ export function OrderTracker({ orderId, initialStatus, order }: Props) {
         )}
 
         {!isCancelled && (
-          <p className="text-center text-sm font-medium text-neutral-700 mt-6">
-            Status atual:{" "}
-            <span className="text-brand">{ORDER_STATUS_LABELS[currentStatus]}</span>
-          </p>
+          <div className="mt-6 space-y-2 text-center">
+            <p className="text-sm font-medium text-neutral-700">
+              Status atual:{" "}
+              <span className="text-brand">{ORDER_STATUS_LABELS[currentStatus]}</span>
+            </p>
+
+            {/* Previsão de entrega */}
+            {estimatedDeliveryAt && currentStatus !== "DELIVERED" && (
+              <DeliveryEta
+                estimatedDeliveryAt={estimatedDeliveryAt}
+                isRouteEta={currentStatus === "OUT_FOR_DELIVERY" && !!realtimeEta}
+              />
+            )}
+          </div>
         )}
       </div>
 
