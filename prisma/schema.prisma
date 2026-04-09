@@ -9,20 +9,23 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      Role     @default(CUSTOMER)
-  orders    Order[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String             @id @default(cuid())
+  name              String
+  email             String             @unique
+  password          String
+  role              Role               @default(CUSTOMER)
+  orders            Order[]
+  motoboyOrders     Order[]            @relation("MotoboyOrders")
+  deliveryTrackings DeliveryTracking[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 }
 
 enum Role {
   CUSTOMER
   ADMIN
   KITCHEN
+  MOTOBOY
 }
 
 model Category {
@@ -49,23 +52,38 @@ model MenuItem {
 }
 
 model Order {
-  id              String        @id @default(cuid())
-  status          OrderStatus   @default(PENDING)
-  paymentMethod   PaymentMethod
-  paymentStatus   PaymentStatus @default(UNPAID)
-  mpPaymentId     String?
-  total           Decimal       @db.Decimal(10, 2)
-  notes           String?
-  customerName    String?
-  customerPhone   String?
-  deliveryType    DeliveryType  @default(PICKUP)
-  deliveryAddress String?
-  deliveryFee     Decimal       @default(0) @db.Decimal(10, 2)
-  userId          String?
-  user            User?         @relation(fields: [userId], references: [id])
-  items           OrderItem[]
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id               String            @id @default(cuid())
+  status           OrderStatus       @default(PENDING)
+  paymentMethod    PaymentMethod
+  paymentStatus    PaymentStatus     @default(UNPAID)
+  mpPaymentId      String?
+  total            Decimal           @db.Decimal(10, 2)
+  notes            String?
+  customerName     String?
+  customerPhone    String?
+  deliveryType     DeliveryType      @default(PICKUP)
+  deliveryAddress  String?
+  deliveryFee      Decimal           @default(0) @db.Decimal(10, 2)
+  userId           String?
+  user             User?             @relation(fields: [userId], references: [id])
+  motoboyId        String?
+  motoboy          User?             @relation("MotoboyOrders", fields: [motoboyId], references: [id])
+  deliveryTracking DeliveryTracking?
+  items            OrderItem[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+model DeliveryTracking {
+  id        String   @id @default(cuid())
+  orderId   String   @unique
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  motoboyId String
+  motoboy   User     @relation(fields: [motoboyId], references: [id])
+  lat       Float
+  lng       Float
+  startedAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum DeliveryType {
@@ -89,6 +107,7 @@ enum OrderStatus {
   CONFIRMED
   IN_PREPARATION
   READY
+  OUT_FOR_DELIVERY
   DELIVERED
   CANCELLED
 }

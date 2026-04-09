@@ -1,11 +1,22 @@
-export type Role = "CUSTOMER" | "ADMIN" | "KITCHEN";
+export type Role = "CUSTOMER" | "ADMIN" | "KITCHEN" | "MOTOBOY";
 export type OrderStatus =
   | "PENDING"
   | "CONFIRMED"
   | "IN_PREPARATION"
   | "READY"
+  | "OUT_FOR_DELIVERY"
   | "DELIVERED"
   | "CANCELLED";
+
+export interface DeliveryTracking {
+  id: string;
+  orderId: string;
+  motoboyId: string;
+  lat: number;
+  lng: number;
+  startedAt: string;
+  updatedAt: string;
+}
 export type PaymentMethod = "PIX" | "CREDIT_CARD" | "CASH";
 export type PaymentStatus = "UNPAID" | "PAID" | "REFUNDED";
 

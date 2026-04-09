@@ -4,16 +4,18 @@ import { useOrderRealtime } from "@/hooks/useOrderRealtime";
 import { formatCurrency, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS } from "@/lib/utils";
 import { OrderStatus, OrderWithItems, PaymentMethod, PaymentStatus } from "@/types";
 import { CheckCircle, Clock, ChefHat, PackageCheck, Truck } from "lucide-react";
+import { LiveDeliveryTracker } from "@/components/delivery/LiveDeliveryTracker";
 
 const STEPS: { status: OrderStatus; label: string; icon: React.ReactNode }[] = [
   { status: "PENDING", label: "Recebido", icon: <Clock size={18} /> },
   { status: "CONFIRMED", label: "Confirmado", icon: <CheckCircle size={18} /> },
   { status: "IN_PREPARATION", label: "Preparando", icon: <ChefHat size={18} /> },
   { status: "READY", label: "Pronto", icon: <PackageCheck size={18} /> },
-  { status: "DELIVERED", label: "Entregue", icon: <Truck size={18} /> },
+  { status: "OUT_FOR_DELIVERY", label: "Em Entrega", icon: <Truck size={18} /> },
+  { status: "DELIVERED", label: "Entregue", icon: <CheckCircle size={18} /> },
 ];
 
-const STATUS_ORDER = ["PENDING", "CONFIRMED", "IN_PREPARATION", "READY", "DELIVERED"];
+const STATUS_ORDER = ["PENDING", "CONFIRMED", "IN_PREPARATION", "READY", "OUT_FOR_DELIVERY", "DELIVERED"];
 
 interface OrderSummary {
   id: string;
@@ -22,6 +24,10 @@ interface OrderSummary {
   paymentStatus: PaymentStatus;
   total: number;
   createdAt: Date;
+  deliveryAddress?: string | null;
+  deliveryType?: string;
+  initialLat?: number | null;
+  initialLng?: number | null;
   items: {
     id: string;
     quantity: number;
@@ -106,6 +112,16 @@ export function OrderTracker({ orderId, initialStatus, order }: Props) {
           </p>
         )}
       </div>
+
+      {/* Mapa ao vivo — exibido quando motoboy está a caminho */}
+      {(currentStatus === "OUT_FOR_DELIVERY") && order.deliveryType === "DELIVERY" && order.deliveryAddress && (
+        <LiveDeliveryTracker
+          orderId={orderId}
+          deliveryAddress={order.deliveryAddress}
+          initialLat={order.initialLat}
+          initialLng={order.initialLng}
+        />
+      )}
 
       {/* Order details */}
       <div className="bg-white rounded-xl border border-neutral-200 p-5">

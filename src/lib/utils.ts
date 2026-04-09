@@ -27,6 +27,7 @@ export const ORDER_STATUS_LABELS: Record<string, string> = {
   CONFIRMED: "Confirmado",
   IN_PREPARATION: "Em Preparo",
   READY: "Pronto",
+  OUT_FOR_DELIVERY: "Em Entrega",
   DELIVERED: "Entregue",
   CANCELLED: "Cancelado",
 };

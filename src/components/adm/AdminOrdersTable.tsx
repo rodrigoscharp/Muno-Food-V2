@@ -39,6 +39,7 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   CONFIRMED: "bg-blue-100 text-blue-700",
   IN_PREPARATION: "bg-orange-100 text-orange-700",
   READY: "bg-green-100 text-green-700",
+  OUT_FOR_DELIVERY: "bg-purple-100 text-purple-700",
   DELIVERED: "bg-neutral-100 text-neutral-600",
   CANCELLED: "bg-brand-light text-red-700",
 };

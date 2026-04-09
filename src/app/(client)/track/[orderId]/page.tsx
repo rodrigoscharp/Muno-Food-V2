@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { OrderTracker } from "@/components/tracking/OrderTracker";
 import { PixPayment } from "@/components/tracking/PixPayment";
+import { LoginPromptBanner } from "@/components/tracking/LoginPromptBanner";
 
 interface Props {
   params: Promise<{ orderId: string }>;
@@ -11,11 +13,14 @@ interface Props {
 export default async function TrackPage({ params, searchParams }: Props) {
   const { orderId } = await params;
   const { pix, copy, payment } = await searchParams;
+  const session = await auth();
+  const isLoggedIn = !!session?.user;
 
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: {
       items: { include: { menuItem: true } },
+      deliveryTracking: true,
     },
   });
 
@@ -29,6 +34,9 @@ export default async function TrackPage({ params, searchParams }: Props) {
         </h1>
         <p className="text-neutral-500 text-sm mt-1">Acompanhe seu pedido em tempo real</p>
       </div>
+
+      {/* Login prompt — exibido apenas para usuários não autenticados */}
+      {!isLoggedIn && <LoginPromptBanner orderId={orderId} />}
 
       {/* Pix payment display */}
       {order.paymentMethod === "PIX" && order.paymentStatus !== "PAID" && pix && (
@@ -58,6 +66,10 @@ export default async function TrackPage({ params, searchParams }: Props) {
           paymentStatus: order.paymentStatus,
           total: Number(order.total),
           createdAt: order.createdAt,
+          deliveryAddress: order.deliveryAddress,
+          deliveryType: order.deliveryType,
+          initialLat: order.deliveryTracking?.lat ?? null,
+          initialLng: order.deliveryTracking?.lng ?? null,
           items: order.items.map((item) => ({
             id: item.id,
             quantity: item.quantity,
