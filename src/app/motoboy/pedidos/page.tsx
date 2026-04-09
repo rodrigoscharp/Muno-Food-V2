@@ -37,6 +37,8 @@ export default async function MotoboyPedidosPage() {
         deliveryAddress: o.deliveryAddress,
         total: Number(o.total),
         createdAt: o.createdAt,
+        paymentMethod: o.paymentMethod,
+        paymentStatus: o.paymentStatus,
         items: o.items.map((i) => ({ name: i.menuItem.name, quantity: i.quantity })),
       }))}
       activeDelivery={

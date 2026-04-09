@@ -32,7 +32,7 @@ export function LiveDeliveryTracker({
   const lng = tracking?.lng ?? initialLng ?? null;
 
   return (
-    <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+    <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden isolate">
       {/* Header */}
       <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between">
         <div className="flex items-center gap-2">

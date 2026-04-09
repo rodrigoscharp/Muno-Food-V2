@@ -12,7 +12,7 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "MUNO - Cardápio Digital",
+  title: "Muno - Bateu fome né?",
   description: "Peça online com facilidade e acompanhe seu pedido em tempo real.",
 };
 

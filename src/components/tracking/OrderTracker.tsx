@@ -148,7 +148,7 @@ function EtaDisplay({
   return (
     <div className="mt-5 flex items-center justify-between bg-white/60 backdrop-blur-sm rounded-2xl px-4 py-3 border border-white/80">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-700">
           {isRouteEta ? "Chegada estimada · por rota" : "Previsão de entrega"}
         </p>
         <p className="text-2xl font-black text-neutral-900 mt-0.5 tabular-nums">{timeStr}</p>
@@ -156,7 +156,7 @@ function EtaDisplay({
       {remaining > 0 && (
         <div className="text-right">
           <p className="text-3xl font-black text-brand tabular-nums leading-none">{remaining}</p>
-          <p className="text-[11px] text-neutral-400 font-medium mt-0.5">minutos</p>
+          <p className="text-[11px] text-neutral-700 font-medium mt-0.5">minutos</p>
         </div>
       )}
     </div>

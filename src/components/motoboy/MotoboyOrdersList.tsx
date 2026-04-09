@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/utils";
-import { MapPin, Clock, Package, ChevronRight, Bike, RefreshCw } from "lucide-react";
+import { MapPin, Clock, Package, ChevronRight, Bike, RefreshCw, Banknote, CreditCard, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
@@ -18,6 +18,8 @@ interface AvailableOrder {
   deliveryAddress: string | null;
   total: number;
   createdAt: Date;
+  paymentMethod: string;
+  paymentStatus: string;
   items: OrderItem[];
 }
 
@@ -180,9 +182,40 @@ export function MotoboyOrdersList({ availableOrders, activeDelivery }: Props) {
                   ))}
                 </ul>
 
+                {/* Pagamento */}
+                <div className="flex items-center justify-between rounded-lg bg-neutral-800/60 px-3 py-2 text-xs">
+                  <div className="flex items-center gap-1.5 text-neutral-400">
+                    {order.paymentMethod === "CASH" ? (
+                      <Banknote size={13} className="text-yellow-400" />
+                    ) : order.paymentMethod === "CREDIT_CARD" ? (
+                      <CreditCard size={13} className="text-blue-400" />
+                    ) : (
+                      <CreditCard size={13} className="text-purple-400" />
+                    )}
+                    <span>
+                      {order.paymentMethod === "CASH"
+                        ? "Dinheiro"
+                        : order.paymentMethod === "CREDIT_CARD"
+                        ? "Cartão de crédito"
+                        : "PIX"}
+                    </span>
+                  </div>
+                  {order.paymentStatus === "PAID" ? (
+                    <span className="flex items-center gap-1 text-green-400 font-semibold">
+                      <CheckCircle2 size={12} />
+                      Já pago
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-amber-400 font-semibold">
+                      <AlertCircle size={12} />
+                      Cobrar na entrega: {formatCurrency(order.total)}
+                    </span>
+                  )}
+                </div>
+
                 <div className="flex items-center justify-between pt-2 border-t border-neutral-800">
                   <span className="text-sm font-semibold text-neutral-300">
-                    {formatCurrency(order.total)}
+                    Total: {formatCurrency(order.total)}
                   </span>
                   <button
                     onClick={() => acceptOrder(order.id)}

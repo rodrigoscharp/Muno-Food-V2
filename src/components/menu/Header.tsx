@@ -41,7 +41,7 @@ export function Header() {
       <header className="sticky top-8 z-40 bg-white border-b border-neutral-200 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 h-20 flex items-center justify-between gap-4">
           <Link href="/" className="shrink-0 flex items-center gap-3">
-            <Image src="/munowbg.png" alt="MUNO" width={180} height={68} className="h-10 sm:h-16 w-auto object-contain" priority />
+            <Image src="/munowbg.png" alt="MUNO" width={180} height={68} className="h-10 sm:h-16 w-auto object-contain" loading="eager" fetchPriority="high" />
             <div className="flex flex-col justify-center leading-tight">
               <span className="text-sm sm:text-base font-bold text-neutral-900 tracking-tight">Muno Food Restaurante</span>
               <span className="text-[11px] sm:text-xs text-neutral-500 flex items-center gap-1">

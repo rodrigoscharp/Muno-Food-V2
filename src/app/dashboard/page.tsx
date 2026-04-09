@@ -3,7 +3,7 @@
 import { useKitchenOrders } from "@/hooks/useKitchenOrders";
 import { formatCurrency, ORDER_STATUS_LABELS } from "@/lib/utils";
 import { OrderStatus, OrderWithItems } from "@/types";
-import { Clock, ChefHat, CheckCircle, RefreshCw, AlertTriangle } from "lucide-react";
+import { Clock, ChefHat, CheckCircle, RefreshCw, AlertTriangle, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 
 const KITCHEN_COLUMNS: { status: OrderStatus; label: string; icon: React.ReactNode; color: string }[] = [
@@ -18,6 +18,12 @@ const NEXT_STATUS: Record<string, OrderStatus> = {
   CONFIRMED: "IN_PREPARATION",
   IN_PREPARATION: "READY",
   READY: "DELIVERED",
+};
+
+const PREV_STATUS: Record<string, OrderStatus> = {
+  CONFIRMED: "PENDING",
+  IN_PREPARATION: "CONFIRMED",
+  READY: "IN_PREPARATION",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -42,11 +48,18 @@ const HEADER_COLORS: Record<string, string> = {
 };
 
 export default function KitchenPage() {
-  const { orders, loading, error, refetch } = useKitchenOrders();
+  const { orders, loading, error, refetch, updateOrderStatus, removeOrder } = useKitchenOrders();
 
   async function advanceStatus(order: OrderWithItems) {
     const nextStatus = NEXT_STATUS[order.status];
     if (!nextStatus) return;
+
+    // Optimistic: atualiza imediatamente na tela
+    if (nextStatus === "DELIVERED") {
+      removeOrder(order.id);
+    } else {
+      updateOrderStatus(order.id, nextStatus);
+    }
 
     const res = await fetch(`/api/orders/${order.id}`, {
       method: "PATCH",
@@ -56,22 +69,47 @@ export default function KitchenPage() {
 
     if (res.ok) {
       toast.success(`#${order.id.slice(-6).toUpperCase()} → ${ORDER_STATUS_LABELS[nextStatus]}`);
-      refetch();
     } else {
+      // Reverte em caso de erro
+      updateOrderStatus(order.id, order.status);
       toast.error("Erro ao atualizar pedido");
     }
   }
 
-  async function cancelOrder(orderId: string) {
-    const res = await fetch(`/api/orders/${orderId}`, {
+  async function revertStatus(order: OrderWithItems) {
+    const prevStatus = PREV_STATUS[order.status];
+    if (!prevStatus) return;
+
+    updateOrderStatus(order.id, prevStatus);
+
+    const res = await fetch(`/api/orders/${order.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: prevStatus }),
+    });
+
+    if (res.ok) {
+      toast.info(`#${order.id.slice(-6).toUpperCase()} ← ${ORDER_STATUS_LABELS[prevStatus]}`);
+    } else {
+      updateOrderStatus(order.id, order.status);
+      toast.error("Erro ao reverter pedido");
+    }
+  }
+
+  async function cancelOrder(order: OrderWithItems) {
+    // Optimistic: remove da lista imediatamente
+    removeOrder(order.id);
+
+    const res = await fetch(`/api/orders/${order.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "CANCELLED" }),
     });
     if (res.ok) {
-      toast.error(`Pedido #${orderId.slice(-6).toUpperCase()} cancelado`);
-      refetch();
+      toast.error(`Pedido #${order.id.slice(-6).toUpperCase()} cancelado`);
     } else {
+      // Reverte
+      updateOrderStatus(order.id, order.status);
       toast.error("Erro ao cancelar pedido");
     }
   }
@@ -125,8 +163,10 @@ export default function KitchenPage() {
                     key={order.id}
                     order={order}
                     onAdvance={() => advanceStatus(order)}
-                    onCancel={() => cancelOrder(order.id)}
+                    onRevert={() => revertStatus(order)}
+                    onCancel={() => cancelOrder(order)}
                     hasNext={!!NEXT_STATUS[order.status]}
+                    hasPrev={!!PREV_STATUS[order.status]}
                   />
                 ))}
 
@@ -147,13 +187,17 @@ export default function KitchenPage() {
 function OrderCard({
   order,
   onAdvance,
+  onRevert,
   onCancel,
   hasNext,
+  hasPrev,
 }: {
   order: OrderWithItems;
   onAdvance: () => void;
+  onRevert: () => void;
   onCancel: () => void;
   hasNext: boolean;
+  hasPrev: boolean;
 }) {
   const elapsed = Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 60_000);
 
@@ -203,6 +247,16 @@ function OrderCard({
           {formatCurrency(order.total)}
         </span>
         <div className="flex gap-1">
+          {hasPrev && (
+            <button
+              onClick={onRevert}
+              title="Voltar fase anterior"
+              className="text-xs px-2 py-1 rounded bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white transition flex items-center gap-1"
+            >
+              <ChevronLeft size={12} />
+              Voltar
+            </button>
+          )}
           {order.status !== "READY" && (
             <button
               onClick={onCancel}

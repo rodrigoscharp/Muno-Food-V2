@@ -55,5 +55,19 @@ export function useKitchenOrders() {
     };
   }, [fetchOrders]);
 
-  return { orders, loading, error, refetch: fetchOrders };
+  // Atualiza o status localmente de imediato (optimistic update)
+  const updateOrderStatus = useCallback((orderId: string, newStatus: string) => {
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId ? { ...o, status: newStatus as OrderWithItems["status"] } : o
+      )
+    );
+  }, []);
+
+  // Remove um pedido da lista localmente (ex: DELIVERED/CANCELLED)
+  const removeOrder = useCallback((orderId: string) => {
+    setOrders((prev) => prev.filter((o) => o.id !== orderId));
+  }, []);
+
+  return { orders, loading, error, refetch: fetchOrders, updateOrderStatus, removeOrder };
 }
