@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { DeliveryTimeControl } from "@/components/adm/DeliveryTimeControl";
 import { BusinessHoursControl, WeekSchedule } from "@/components/adm/BusinessHoursControl";
+import { RestaurantInfoControl } from "@/components/adm/RestaurantInfoControl";
+import { getRestaurantInfo } from "@/lib/restaurant";
 
 const DEFAULT_HOURS: WeekSchedule = {
   monday:    { open: true,  from: "11:00", to: "22:00" },
@@ -13,9 +15,10 @@ const DEFAULT_HOURS: WeekSchedule = {
 };
 
 export default async function RestauranteAdminPage() {
-  const [deliveryTimeSetting, businessHoursSetting] = await Promise.all([
+  const [deliveryTimeSetting, businessHoursSetting, restaurantInfo] = await Promise.all([
     prisma.setting.findUnique({ where: { key: "delivery_time_minutes" } }),
     prisma.setting.findUnique({ where: { key: "business_hours" } }),
+    getRestaurantInfo(),
   ]);
 
   const deliveryMinutes = deliveryTimeSetting
@@ -31,9 +34,10 @@ export default async function RestauranteAdminPage() {
       <h1 className="text-2xl font-bold text-neutral-900 mb-1">Gerenciamento do Restaurante</h1>
       <p className="text-sm text-neutral-400 mb-8">Configure as operações do seu restaurante</p>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-1">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+        <div className="lg:col-span-1 space-y-6">
           <DeliveryTimeControl initialMinutes={deliveryMinutes} />
+          <RestaurantInfoControl initial={restaurantInfo} />
         </div>
         <div className="lg:col-span-3">
           <BusinessHoursControl initialSchedule={schedule} />

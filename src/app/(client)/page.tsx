@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { CategoryNav } from "@/components/menu/CategoryNav";
 import { ProductCard } from "@/components/menu/ProductCard";
 import { MenuItemWithCategory } from "@/types";
+import { getBusinessHours, checkIsOpen } from "@/lib/business-hours";
 
 const getMenu = unstable_cache(
   async () => {
@@ -22,12 +23,24 @@ const getMenu = unstable_cache(
 );
 
 export default async function MenuPage() {
-  const categories = await getMenu();
-
+  const [categories, schedule] = await Promise.all([getMenu(), getBusinessHours()]);
+  const isOpen = checkIsOpen(schedule);
   const nonEmpty = categories.filter((c) => c.items.length > 0);
 
   return (
     <div className="min-h-screen">
+      {!isOpen && (
+        <div className="bg-neutral-950 text-white">
+          <div className="max-w-5xl mx-auto px-4 py-10 flex flex-col items-center text-center gap-3">
+            <span className="text-4xl">🕐</span>
+            <h2 className="text-xl font-black tracking-tight">Estamos fechados no momento</h2>
+            <p className="text-neutral-400 text-sm max-w-sm">
+              Já já abriremos para matar sua fome! Enquanto isso, fique à vontade para explorar o cardápio.
+            </p>
+          </div>
+        </div>
+      )}
+
       {nonEmpty.length > 0 ? (
         <>
           <CategoryNav categories={nonEmpty.map(({ id, name, slug }) => ({ id, name, slug }))} />
@@ -63,9 +76,10 @@ export default async function MenuPage() {
                   sm:gap-4 sm:overflow-visible sm:mx-0 sm:px-0 sm:pb-0
                 ">
                   {category.items.map((item) => (
-                    <div key={item.id} className="shrink-0 w-44 snap-start sm:w-auto sm:shrink">
+                    <div key={item.id} className="shrink-0 w-44 snap-start sm:w-auto sm:shrink sm:h-full">
                       <ProductCard
                         item={{ ...item, price: Number(item.price) } as unknown as MenuItemWithCategory}
+                        restaurantOpen={isOpen}
                       />
                     </div>
                   ))}

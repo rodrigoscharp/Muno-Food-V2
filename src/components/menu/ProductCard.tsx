@@ -9,7 +9,7 @@ import { formatCurrency } from "@/lib/utils";
 import { MenuItemWithCategory } from "@/types";
 import { AddToCartModal } from "@/components/menu/AddToCartModal";
 
-export function ProductCard({ item }: { item: MenuItemWithCategory }) {
+export function ProductCard({ item, restaurantOpen = true }: { item: MenuItemWithCategory; restaurantOpen?: boolean }) {
   const addItem = useCart((s) => s.addItem);
   const btnRef = useRef<HTMLButtonElement>(null);
   const [showModal, setShowModal] = useState(false);
@@ -25,7 +25,7 @@ export function ProductCard({ item }: { item: MenuItemWithCategory }) {
 
   return (
     <>
-      <div className="group bg-white rounded-2xl border border-neutral-200 overflow-hidden flex flex-col hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
+      <div className="group bg-white rounded-2xl border border-neutral-200 overflow-hidden flex flex-col h-full hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
         <div className="relative h-36 sm:h-40 bg-neutral-100 overflow-hidden">
           {item.imageUrl ? (
             <Image
@@ -67,7 +67,8 @@ export function ProductCard({ item }: { item: MenuItemWithCategory }) {
             <button
               ref={btnRef}
               onClick={() => setShowModal(true)}
-              disabled={!item.available}
+              disabled={!item.available || !restaurantOpen}
+              title={!restaurantOpen ? "Restaurante fechado no momento" : undefined}
               className="flex items-center justify-center w-8 h-8 rounded-full bg-brand hover:bg-brand-dark active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all duration-150 shadow-sm"
             >
               <Plus size={16} strokeWidth={2.5} />

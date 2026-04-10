@@ -2,16 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { revalidateTag } from "next/cache";
-import { DEFAULT_SCHEDULE, WeekSchedule } from "@/lib/business-hours";
 
-export type { WeekSchedule };
-
-const KEY = "business_hours";
+const KEY = "restaurant_info";
 
 export async function GET() {
   const setting = await prisma.setting.findUnique({ where: { key: KEY } });
-  const schedule: WeekSchedule = setting ? JSON.parse(setting.value) : DEFAULT_SCHEDULE;
-  return NextResponse.json(schedule);
+  return NextResponse.json(setting ? JSON.parse(setting.value) : {});
 }
 
 export async function PUT(req: NextRequest) {
@@ -20,7 +16,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
-  const body = await req.json() as WeekSchedule;
+  const body = await req.json();
 
   await prisma.setting.upsert({
     where: { key: KEY },
@@ -28,7 +24,7 @@ export async function PUT(req: NextRequest) {
     create: { key: KEY, value: JSON.stringify(body) },
   });
 
-  revalidateTag("business_hours", "max");
+  revalidateTag("restaurant_info", "max");
 
   return NextResponse.json({ ok: true });
 }

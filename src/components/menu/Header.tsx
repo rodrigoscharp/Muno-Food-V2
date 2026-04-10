@@ -8,8 +8,13 @@ import { CartDrawer } from "@/components/cart/CartDrawer";
 import { CartFlyAnimation } from "@/components/menu/CartFlyAnimation";
 import { useState, useEffect, useRef } from "react";
 import { ShoppingCart, User, LogOut, Settings, ChefHat, Menu, X, ClipboardList } from "lucide-react";
+import type { RestaurantInfo } from "@/lib/restaurant";
 
-export function Header() {
+interface HeaderProps {
+  restaurantInfo: RestaurantInfo;
+}
+
+export function Header({ restaurantInfo }: HeaderProps) {
   const { data: session } = useSession();
 
   // Selector direto no valor — Zustand re-renderiza imediatamente ao mudar
@@ -41,12 +46,12 @@ export function Header() {
       <header className="sticky top-8 z-40 bg-white border-b border-neutral-200 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 h-20 flex items-center justify-between gap-4">
           <Link href="/" className="shrink-0 flex items-center gap-3">
-            <Image src="/munowbg.png" alt="MUNO" width={180} height={68} className="h-10 sm:h-16 w-auto object-contain" loading="eager" fetchPriority="high" />
+            <Image src={restaurantInfo.logoUrl} alt={restaurantInfo.name} width={180} height={68} className="h-10 sm:h-16 w-auto object-contain" loading="eager" fetchPriority="high" unoptimized={restaurantInfo.logoUrl.startsWith("http")} />
             <div className="flex flex-col justify-center leading-tight">
-              <span className="text-sm sm:text-base font-bold text-neutral-900 tracking-tight">Muno Food Restaurante</span>
+              <span className="text-sm sm:text-base font-bold text-neutral-900 tracking-tight">{restaurantInfo.name}</span>
               <span className="text-[11px] sm:text-xs text-neutral-500 flex items-center gap-1">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-                Rua Paraty 1772, Ubatuba-SP
+                {restaurantInfo.address}
               </span>
             </div>
           </Link>

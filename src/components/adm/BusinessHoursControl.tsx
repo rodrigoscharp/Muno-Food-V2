@@ -3,14 +3,9 @@
 import { useState, useTransition } from "react";
 import { Clock, Check } from "lucide-react";
 import { toast } from "sonner";
+import type { WeekSchedule } from "@/lib/business-hours";
 
-export interface DaySchedule {
-  open: boolean;
-  from: string;
-  to: string;
-}
-
-export type WeekSchedule = Record<string, DaySchedule>;
+export type { DaySchedule, WeekSchedule } from "@/lib/business-hours";
 
 const DAYS: { key: string; label: string }[] = [
   { key: "monday",    label: "Segunda" },
