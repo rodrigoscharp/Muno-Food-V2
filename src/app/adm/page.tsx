@@ -1,21 +1,31 @@
 import { prisma } from "@/lib/prisma";
 import { formatCurrency } from "@/lib/utils";
 import { AdminCharts } from "@/components/adm/AdminCharts";
-import { DeliveryTimeControl } from "@/components/adm/DeliveryTimeControl";
 
 export default async function AdminDashboard() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  // Usa UTC-3 (BRT) para calcular "hoje" e "início do mês" corretamente
+  const nowBRT = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  const todayBRT = new Date(nowBRT);
+  todayBRT.setUTCHours(3, 0, 0, 0); // meia-noite BRT = 03:00 UTC
+  const startOfMonthBRT = new Date(Date.UTC(nowBRT.getUTCFullYear(), nowBRT.getUTCMonth(), 1, 3, 0, 0, 0));
 
-  const [todayStats, monthStats, menuItemCount, pendingOrders, deliveryTimeSetting] = await Promise.all([
+  // Receita = pedidos ENTREGUES (dinheiro recebido) OU pré-pagos (PIX/cartão PAID)
+  const revenueFilter = {
+    OR: [
+      { status: "DELIVERED" as const },
+      { paymentStatus: "PAID" as const },
+    ],
+    NOT: { status: "CANCELLED" as const },
+  };
+
+  const [todayStats, monthStats, menuItemCount, pendingOrders] = await Promise.all([
     prisma.order.aggregate({
-      where: { createdAt: { gte: today }, paymentStatus: "PAID" },
+      where: { createdAt: { gte: todayBRT }, ...revenueFilter },
       _sum: { total: true },
       _count: true,
     }),
     prisma.order.aggregate({
-      where: { createdAt: { gte: startOfMonth }, paymentStatus: "PAID" },
+      where: { createdAt: { gte: startOfMonthBRT }, ...revenueFilter },
       _sum: { total: true },
       _count: true,
     }),
@@ -23,14 +33,12 @@ export default async function AdminDashboard() {
     prisma.order.count({
       where: { status: { in: ["PENDING", "CONFIRMED", "IN_PREPARATION"] } },
     }),
-    prisma.setting.findUnique({ where: { key: "delivery_time_minutes" } }),
   ]);
-
-  const deliveryMinutes = deliveryTimeSetting ? parseInt(deliveryTimeSetting.value, 10) : 45;
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-neutral-900 mb-6">Dashboard</h1>
+      <h1 className="text-2xl font-bold text-neutral-900 mb-1">Dashboard</h1>
+      <p className="text-sm text-neutral-400 mb-6">Resultados e métricas do restaurante</p>
 
       {/* Metric cards */}
 
@@ -40,14 +48,14 @@ export default async function AdminDashboard() {
           <p className="text-2xl font-bold text-green-600 mt-1">
             {formatCurrency(Number(todayStats._sum.total ?? 0))}
           </p>
-          <p className="text-xs text-neutral-400 mt-0.5">{todayStats._count} pedidos pagos</p>
+          <p className="text-xs text-neutral-400 mt-0.5">{todayStats._count} pedidos entregues</p>
         </div>
         <div className="bg-white rounded-xl border border-neutral-200 p-5">
           <p className="text-xs text-neutral-400 font-medium uppercase tracking-wide">Receita do Mês</p>
           <p className="text-2xl font-bold text-blue-600 mt-1">
             {formatCurrency(Number(monthStats._sum.total ?? 0))}
           </p>
-          <p className="text-xs text-neutral-400 mt-0.5">{monthStats._count} pedidos pagos</p>
+          <p className="text-xs text-neutral-400 mt-0.5">{monthStats._count} pedidos entregues</p>
         </div>
         <div className="bg-white rounded-xl border border-neutral-200 p-5">
           <p className="text-xs text-neutral-400 font-medium uppercase tracking-wide">Em Aberto</p>
@@ -61,14 +69,9 @@ export default async function AdminDashboard() {
         </div>
       </div>
 
-      {/* Delivery time + Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-        <div className="lg:col-span-1">
-          <DeliveryTimeControl initialMinutes={deliveryMinutes} />
-        </div>
-        <div className="lg:col-span-3">
-          <AdminCharts />
-        </div>
+      {/* Charts */}
+      <div className="mb-8">
+        <AdminCharts />
       </div>
     </div>
   );

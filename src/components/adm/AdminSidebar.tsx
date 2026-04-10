@@ -4,12 +4,29 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { LayoutDashboard, UtensilsCrossed, ShoppingBag, LogOut } from "lucide-react";
+import {
+  BarChart2,
+  UtensilsCrossed,
+  ShoppingBag,
+  LogOut,
+  Store,
+} from "lucide-react";
 
-const NAV = [
-  { href: "/adm", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/adm/menu", label: "Cardápio", icon: UtensilsCrossed },
-  { href: "/adm/orders", label: "Pedidos", icon: ShoppingBag },
+const NAV_GROUPS = [
+  {
+    label: "Resultados",
+    items: [
+      { href: "/adm", label: "Dashboard", icon: BarChart2, exact: true },
+      { href: "/adm/orders", label: "Pedidos", icon: ShoppingBag, exact: false },
+    ],
+  },
+  {
+    label: "Restaurante",
+    items: [
+      { href: "/adm/restaurante", label: "Gerenciamento", icon: Store, exact: false },
+      { href: "/adm/menu", label: "Cardápio", icon: UtensilsCrossed, exact: false },
+    ],
+  },
 ];
 
 interface Props {
@@ -18,6 +35,10 @@ interface Props {
 
 export function AdminSidebar({ user }: Props) {
   const pathname = usePathname();
+
+  function isActive(href: string, exact: boolean) {
+    return exact ? pathname === href : pathname.startsWith(href);
+  }
 
   return (
     <aside className="w-56 bg-white border-r border-neutral-200 flex flex-col shrink-0">
@@ -28,24 +49,33 @@ export function AdminSidebar({ user }: Props) {
         <p className="text-xs text-neutral-400 mt-1">Painel Admin</p>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {NAV.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href;
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition ${
-                active
-                  ? "bg-brand-light text-brand-dark font-medium"
-                  : "text-neutral-600 hover:bg-neutral-100"
-              }`}
-            >
-              <Icon size={16} />
-              {label}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.label}>
+            <p className="px-3 mb-1 text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+              {group.label}
+            </p>
+            <div className="space-y-0.5">
+              {group.items.map(({ href, label, icon: Icon, exact }) => {
+                const active = isActive(href, exact);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition ${
+                      active
+                        ? "bg-brand-light text-brand-dark font-medium"
+                        : "text-neutral-600 hover:bg-neutral-100"
+                    }`}
+                  >
+                    <Icon size={16} />
+                    {label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       <div className="px-3 py-4 border-t border-neutral-100">
