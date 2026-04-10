@@ -4,8 +4,6 @@ import { auth } from "@/lib/auth";
 import { withErrorHandling } from "@/lib/api";
 import { z } from "zod";
 
-const DELIVERY_FEE = 10;
-
 const orderSchema = z.object({
   items: z.array(
     z.object({
@@ -20,6 +18,7 @@ const orderSchema = z.object({
   customerPhone: z.string().optional(),
   deliveryType: z.enum(["PICKUP", "DELIVERY"]).default("PICKUP"),
   deliveryAddress: z.string().optional(),
+  deliveryFee: z.number().min(0).optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -78,7 +77,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
     }
 
-    const { items, paymentMethod, notes, customerName, customerPhone, deliveryType, deliveryAddress } = parsed.data;
+    const { items, paymentMethod, notes, customerName, customerPhone, deliveryType, deliveryAddress, deliveryFee: clientFee } = parsed.data;
 
     const menuItems = await prisma.menuItem.findMany({
       where: { id: { in: items.map((i) => i.menuItemId) } },
@@ -90,7 +89,7 @@ export async function POST(req: NextRequest) {
       return sum + Number(menuItem.price) * orderItem.quantity;
     }, 0);
 
-    const deliveryFee = deliveryType === "DELIVERY" ? DELIVERY_FEE : 0;
+    const deliveryFee = deliveryType === "DELIVERY" ? (clientFee ?? 0) : 0;
     const total = itemsTotal + deliveryFee;
 
     // Lê o tempo estimado de entrega configurado pelo admin

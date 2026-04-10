@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { DeliveryTimeControl } from "@/components/adm/DeliveryTimeControl";
 import { BusinessHoursControl, WeekSchedule } from "@/components/adm/BusinessHoursControl";
 import { RestaurantInfoControl } from "@/components/adm/RestaurantInfoControl";
+import { DeliveryZonesControl } from "@/components/adm/DeliveryZonesControl";
 import { getRestaurantInfo } from "@/lib/restaurant";
 
 const DEFAULT_HOURS: WeekSchedule = {
@@ -15,10 +16,11 @@ const DEFAULT_HOURS: WeekSchedule = {
 };
 
 export default async function RestauranteAdminPage() {
-  const [deliveryTimeSetting, businessHoursSetting, restaurantInfo] = await Promise.all([
+  const [deliveryTimeSetting, businessHoursSetting, restaurantInfo, deliveryZones] = await Promise.all([
     prisma.setting.findUnique({ where: { key: "delivery_time_minutes" } }),
     prisma.setting.findUnique({ where: { key: "business_hours" } }),
     getRestaurantInfo(),
+    prisma.deliveryZone.findMany({ where: { active: true }, orderBy: { position: "asc" } }),
   ]);
 
   const deliveryMinutes = deliveryTimeSetting
@@ -39,8 +41,11 @@ export default async function RestauranteAdminPage() {
           <DeliveryTimeControl initialMinutes={deliveryMinutes} />
           <RestaurantInfoControl initial={restaurantInfo} />
         </div>
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-3 space-y-6">
           <BusinessHoursControl initialSchedule={schedule} />
+          <DeliveryZonesControl
+            initialZones={deliveryZones.map((z) => ({ ...z, price: Number(z.price) }))}
+          />
         </div>
       </div>
     </div>

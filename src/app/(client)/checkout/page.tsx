@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCart } from "@/hooks/useCart";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -9,20 +9,21 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { formatCurrency } from "@/lib/utils";
 import { PaymentMethodSelector } from "@/components/checkout/PaymentMethodSelector";
 import { PaymentMethod } from "@/types";
-import { ArrowLeft, Store, Truck } from "lucide-react";
+import { ArrowLeft, Store, Truck, MapPin } from "lucide-react";
 import Link from "next/link";
 
-const DELIVERY_FEE = 10;
+interface DeliveryZone {
+  id: string;
+  name: string;
+  price: number;
+}
 
 const schema = z.object({
   customerName: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   customerPhone: z.string().min(8, "Telefone inválido").optional().or(z.literal("")),
   notes: z.string().optional(),
-  // address fields
   rua: z.string().optional(),
   numero: z.string().optional(),
-  bairro: z.string().optional(),
-  cidade: z.string().optional(),
   complemento: z.string().optional(),
 });
 
@@ -34,34 +35,39 @@ export default function CheckoutPage() {
   const { items, total, clearCart } = useCart();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("PIX");
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("PICKUP");
+  const [selectedZone, setSelectedZone] = useState<DeliveryZone | null>(null);
+  const [zones, setZones] = useState<DeliveryZone[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<FormData>({ resolver: zodResolver(schema) });
+  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+    resolver: zodResolver(schema),
+  });
+
+  useEffect(() => {
+    fetch("/api/delivery-zones")
+      .then((r) => r.json())
+      .then((data: DeliveryZone[]) => setZones(data))
+      .catch(() => {});
+  }, []);
 
   if (items.length === 0) {
     return (
       <div className="max-w-lg mx-auto px-4 py-16 text-center">
         <p className="text-neutral-500 mb-4">Seu carrinho está vazio.</p>
-        <Link href="/" className="text-brand font-medium hover:underline">
-          Ver cardápio
-        </Link>
+        <Link href="/" className="text-brand font-medium hover:underline">Ver cardápio</Link>
       </div>
     );
   }
 
   const itemsTotal = total();
-  const deliveryFee = deliveryType === "DELIVERY" ? DELIVERY_FEE : 0;
+  const deliveryFee = deliveryType === "DELIVERY" ? (selectedZone?.price ?? 0) : 0;
   const grandTotal = itemsTotal + deliveryFee;
 
   async function onSubmit(data: FormData) {
-    if (deliveryType === "DELIVERY" && (!data.rua || !data.numero || !data.bairro || !data.cidade)) {
-      setError("Preencha o endereço completo para entrega.");
-      return;
+    if (deliveryType === "DELIVERY") {
+      if (!selectedZone) { setError("Selecione o bairro de entrega."); return; }
+      if (!data.rua || !data.numero) { setError("Preencha rua e número."); return; }
     }
 
     setLoading(true);
@@ -72,8 +78,7 @@ export default function CheckoutPage() {
       deliveryAddress = [
         `${data.rua}, ${data.numero}`,
         data.complemento,
-        data.bairro,
-        data.cidade,
+        selectedZone!.name,
       ].filter(Boolean).join(" - ");
     }
 
@@ -93,6 +98,7 @@ export default function CheckoutPage() {
           customerPhone: data.customerPhone,
           deliveryType,
           deliveryAddress,
+          deliveryFee: deliveryType === "DELIVERY" ? selectedZone?.price ?? 0 : 0,
         }),
       });
 
@@ -106,18 +112,11 @@ export default function CheckoutPage() {
         const paymentRes = await fetch("/api/payments/mercadopago", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            orderId: order.id,
-            paymentMethod,
-            customerName: data.customerName,
-          }),
+          body: JSON.stringify({ orderId: order.id, paymentMethod, customerName: data.customerName }),
         });
-
         if (!paymentRes.ok) throw new Error("Erro ao iniciar pagamento");
         const payment = await paymentRes.json();
-
         clearCart();
-
         if (paymentMethod === "PIX") {
           router.push(`/track/${order.id}?pix=${encodeURIComponent(payment.pixQrCode)}&copy=${encodeURIComponent(payment.pixCopyPaste)}`);
         } else {
@@ -135,10 +134,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <Link
-        href="/"
-        className="flex items-center gap-2 text-sm text-neutral-500 hover:text-neutral-700 mb-6 transition"
-      >
+      <Link href="/" className="flex items-center gap-2 text-sm text-neutral-500 hover:text-neutral-700 mb-6 transition">
         <ArrowLeft size={16} />
         Voltar ao cardápio
       </Link>
@@ -146,41 +142,65 @@ export default function CheckoutPage() {
       <h1 className="text-2xl font-bold text-neutral-900 mb-6">Finalizar Pedido</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Left: form */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          {/* Delivery / Pickup selector */}
+
+          {/* Retirada / Entrega */}
           <div className="bg-white rounded-xl border border-neutral-200 p-5 space-y-4">
             <h2 className="font-semibold text-neutral-900">Como deseja receber?</h2>
             <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setDeliveryType("PICKUP")}
-                className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition ${
-                  deliveryType === "PICKUP"
-                    ? "border-brand bg-brand-light text-brand"
-                    : "border-neutral-200 text-neutral-500 hover:border-neutral-300"
-                }`}
-              >
-                <Store size={22} />
-                <span className="text-sm font-semibold">Retirar no local</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setDeliveryType("DELIVERY")}
-                className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition ${
-                  deliveryType === "DELIVERY"
-                    ? "border-brand bg-brand-light text-brand"
-                    : "border-neutral-200 text-neutral-500 hover:border-neutral-300"
-                }`}
-              >
-                <Truck size={22} />
-                <span className="text-sm font-semibold">Entrega</span>
-              </button>
+              {(["PICKUP", "DELIVERY"] as DeliveryType[]).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => { setDeliveryType(type); setSelectedZone(null); }}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition ${
+                    deliveryType === type
+                      ? "border-brand bg-brand-light text-brand"
+                      : "border-neutral-200 text-neutral-500 hover:border-neutral-300"
+                  }`}
+                >
+                  {type === "PICKUP" ? <Store size={22} /> : <Truck size={22} />}
+                  <span className="text-sm font-semibold">
+                    {type === "PICKUP" ? "Retirar no local" : "Entrega"}
+                  </span>
+                </button>
+              ))}
             </div>
 
-            {/* Address fields — only when DELIVERY */}
             {deliveryType === "DELIVERY" && (
               <div className="space-y-3 pt-1">
+
+                {/* Seletor de bairro */}
+                <div>
+                  <label className="block text-xs font-medium text-neutral-600 mb-2 flex items-center gap-1">
+                    <MapPin size={11} /> Selecione seu bairro *
+                  </label>
+                  {zones.length === 0 ? (
+                    <p className="text-xs text-neutral-400 italic py-2">Carregando bairros disponíveis...</p>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-1.5 max-h-48 overflow-y-auto pr-0.5">
+                      {zones.map((zone) => (
+                        <button
+                          key={zone.id}
+                          type="button"
+                          onClick={() => setSelectedZone(zone)}
+                          className={`flex items-center justify-between px-3 py-2.5 rounded-lg border text-sm transition ${
+                            selectedZone?.id === zone.id
+                              ? "border-brand bg-brand-light text-brand font-semibold"
+                              : "border-neutral-200 text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50"
+                          }`}
+                        >
+                          <span>{zone.name}</span>
+                          <span className={`text-xs font-bold ${selectedZone?.id === zone.id ? "text-brand" : "text-neutral-500"}`}>
+                            {formatCurrency(zone.price)}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Endereço */}
                 <div className="grid grid-cols-3 gap-3">
                   <div className="col-span-2">
                     <label className="block text-xs font-medium text-neutral-600 mb-1">Rua *</label>
@@ -207,32 +227,13 @@ export default function CheckoutPage() {
                     className="w-full px-3 py-2 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-neutral-600 mb-1">Bairro *</label>
-                    <input
-                      {...register("bairro")}
-                      placeholder="Centro"
-                      className="w-full px-3 py-2 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-neutral-600 mb-1">Cidade *</label>
-                    <input
-                      {...register("cidade")}
-                      placeholder="Ubatuba"
-                      className="w-full px-3 py-2 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
-                    />
-                  </div>
-                </div>
               </div>
             )}
           </div>
 
-          {/* Customer info */}
+          {/* Dados do cliente */}
           <div className="bg-white rounded-xl border border-neutral-200 p-5 space-y-4">
             <h2 className="font-semibold text-neutral-900">Seus dados</h2>
-
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Nome *</label>
               <input
@@ -240,11 +241,8 @@ export default function CheckoutPage() {
                 placeholder="Seu nome"
                 className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
               />
-              {errors.customerName && (
-                <p className="text-brand text-xs mt-1">{errors.customerName.message}</p>
-              )}
+              {errors.customerName && <p className="text-brand text-xs mt-1">{errors.customerName.message}</p>}
             </div>
-
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Telefone (opcional)</label>
               <input
@@ -252,11 +250,7 @@ export default function CheckoutPage() {
                 placeholder="(11) 99999-9999"
                 className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
               />
-              {errors.customerPhone && (
-                <p className="text-brand text-xs mt-1">{errors.customerPhone.message}</p>
-              )}
             </div>
-
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Observações (opcional)</label>
               <textarea
@@ -268,7 +262,7 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Payment method */}
+          {/* Pagamento */}
           <div className="bg-white rounded-xl border border-neutral-200 p-5">
             <h2 className="font-semibold text-neutral-900 mb-3">Pagamento</h2>
             <PaymentMethodSelector value={paymentMethod} onChange={setPaymentMethod} />
@@ -285,15 +279,11 @@ export default function CheckoutPage() {
             disabled={loading}
             className="w-full bg-brand hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition"
           >
-            {loading
-              ? "Processando..."
-              : paymentMethod === "CASH"
-              ? "Confirmar Pedido"
-              : "Ir para Pagamento"}
+            {loading ? "Processando..." : paymentMethod === "CASH" ? "Confirmar Pedido" : "Ir para Pagamento"}
           </button>
         </form>
 
-        {/* Right: order summary */}
+        {/* Resumo */}
         <div className="bg-white rounded-xl border border-neutral-200 p-5 h-fit">
           <h2 className="font-semibold text-neutral-900 mb-4">Resumo do Pedido</h2>
           <ul className="space-y-3 mb-4">
@@ -316,8 +306,11 @@ export default function CheckoutPage() {
             </div>
             {deliveryType === "DELIVERY" && (
               <div className="flex items-center justify-between text-sm text-neutral-500">
-                <span>Taxa de entrega</span>
-                <span>{formatCurrency(DELIVERY_FEE)}</span>
+                <span className="flex items-center gap-1">
+                  Taxa de entrega
+                  {selectedZone && <span className="text-neutral-400 text-xs">· {selectedZone.name}</span>}
+                </span>
+                <span>{selectedZone ? formatCurrency(selectedZone.price) : <span className="italic text-xs">selecione o bairro</span>}</span>
               </div>
             )}
             <div className="flex items-center justify-between pt-1">
