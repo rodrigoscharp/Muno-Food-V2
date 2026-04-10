@@ -1,8 +1,12 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 
-const GEMINI_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+
+const historyMessageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string(),
+});
 
 const schema = z.object({
   message: z.string().min(1).max(500),
@@ -15,24 +19,20 @@ const schema = z.object({
       category: z.string(),
     })
   ).min(1).max(150),
+  history: z.array(historyMessageSchema).max(10).optional(),
 });
 
-const SYSTEM_PROMPT = `Você é o Muno 🍔, assistente de pedidos de um restaurante. Fala português brasileiro, é animado e usa emojis.
+const SYSTEM_PROMPT = `Você é o Muno 🍔, assistente de pedidos de um restaurante brasileiro. É animado, usa emojis e fala português.
 
-Sua única função: analisar o cardápio e recomendar os itens mais adequados para o cliente.
+Sua função: analisar o cardápio e recomendar os itens mais adequados para o cliente.
 
 REGRAS:
-- Leia o nome E a descrição de cada item do cardápio antes de recomendar
-- Escolha 1 a 4 itens dependendo da fome/pedido do cliente
-- Para restrições alimentares (vegano, vegetariano, sem glúten, sem lactose, sem carne), analise cuidadosamente a descrição dos itens antes de recomendar. Se não houver item compatível, diga isso.
-- Responda SOMENTE com JSON válido neste formato exato (sem markdown, sem texto fora do JSON):
-{"message":"sua resposta animada em 1-2 frases","ids":["id_do_item_1","id_do_item_2"]}
-
-EXEMPLOS de calibração por fome:
-- Pouca fome / lanche rápido → 1 item leve
-- Com fome / fome normal → 1-2 itens
-- Faminto → 2-3 itens
-- Esfomeado / morrendo de fome → 3-4 itens (os maiores e mais reforçados)`;
+- Leia o nome E a descrição de cada item antes de recomendar
+- Escolha 1 a 4 itens dependendo da fome/pedido
+- Calibração por fome: "pouca fome" = 1 item leve | "com fome" = 1-2 itens | "faminto" = 2-3 itens | "esfomeado" = 3-4 itens (os maiores)
+- Para restrições (vegano, sem glúten, sem lactose, sem carne): analise a descrição com cuidado. Se não houver item compatível, diga isso com simpatia
+- Responda SOMENTE com JSON válido, sem nenhum texto fora do JSON:
+{"message":"sua resposta em 1-2 frases animadas","ids":["id_real_1","id_real_2"]}`;
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
@@ -46,8 +46,8 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "Dados inválidos" }, { status: 400 });
   }
 
-  const { message, menuContext } = parsed.data;
-  const apiKey = process.env.GEMINI_API_KEY;
+  const { message, menuContext, history = [] } = parsed.data;
+  const apiKey = process.env.GROQ_API_KEY;
 
   if (!apiKey) {
     return Response.json({ error: "IA não configurada no servidor" }, { status: 500 });
@@ -63,42 +63,60 @@ export async function POST(req: NextRequest) {
     }))
   );
 
-  const userMessage = `Cardápio completo:\n${menuJson}\n\nPedido do cliente: ${message}`;
+  // First message includes the full menu. Follow-up messages are lightweight.
+  const firstUserMessage = `Cardápio completo:\n${menuJson}\n\nPedido do cliente: ${message}`;
+  const followUpMessage = message;
+
+  const isFirstMessage = history.length === 0;
+
+  const messages = [
+    { role: "system", content: SYSTEM_PROMPT },
+    ...(isFirstMessage
+      ? [{ role: "user", content: firstUserMessage }]
+      : [
+          // Inject the menu only in the first turn so history stays compact
+          { role: "user", content: `Cardápio completo:\n${menuJson}\n\nPedido do cliente: ${history[0]?.content ?? message}` },
+          ...history.slice(1),
+          { role: "user", content: followUpMessage },
+        ]),
+  ];
 
   try {
-    const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+    const res = await fetch(GROQ_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [{ role: "user", parts: [{ text: userMessage }] }],
-        generationConfig: { maxOutputTokens: 800, temperature: 0.7 },
+        model: "llama-3.3-70b-versatile",
+        messages,
+        max_tokens: 400,
+        temperature: 0.7,
+        response_format: { type: "json_object" },
       }),
     });
 
     const data = await res.json();
 
     if (!res.ok) {
-      console.error("[AI] Gemini error:", data.error?.code, data.error?.message);
+      console.error("[AI] Groq error:", data.error?.message);
       return Response.json({ error: "Erro ao consultar a IA. Tente novamente!" }, { status: 500 });
     }
 
-    const raw: string = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+    const raw: string = data.choices?.[0]?.message?.content?.trim() ?? "";
 
-    // Remove markdown code fences if present
-    const clean = raw.replace(/^```json\n?|^```\n?|```$/gm, "").trim();
-
-    let parsed2: { message: string; ids: string[] };
+    let result: { message: string; ids: string[] };
     try {
-      parsed2 = JSON.parse(clean);
+      result = JSON.parse(raw);
     } catch {
-      console.error("[AI] JSON parse failed. Raw response:", raw);
-      return Response.json({ error: "A IA retornou uma resposta inválida. Tente novamente!" }, { status: 500 });
+      console.error("[AI] JSON parse failed. Raw:", raw);
+      return Response.json({ error: "A IA retornou resposta inválida. Tente novamente!" }, { status: 500 });
     }
 
     return Response.json({
-      text: parsed2.message ?? "",
-      ids: Array.isArray(parsed2.ids) ? parsed2.ids : [],
+      text: result.message ?? "",
+      ids: Array.isArray(result.ids) ? result.ids : [],
     });
   } catch (err) {
     console.error("[AI] fetch error:", err);
