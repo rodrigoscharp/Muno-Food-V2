@@ -19,7 +19,7 @@ const DEFAULT: WeekSchedule = {
   thursday:  { open: true,  from: "11:00", to: "22:00" },
   friday:    { open: true,  from: "11:00", to: "23:00" },
   saturday:  { open: true,  from: "11:00", to: "23:00" },
-  sunday:    { open: false, from: "11:00", to: "20:00" },
+  sunday:    { open: true,  from: "11:00", to: "20:00" },
 };
 
 export async function GET() {
