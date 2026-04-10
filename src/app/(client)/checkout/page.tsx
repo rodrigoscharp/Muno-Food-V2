@@ -47,7 +47,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     fetch("/api/delivery-zones")
       .then((r) => r.json())
-      .then((data: DeliveryZone[]) => setZones(data))
+      .then((data: DeliveryZone[]) => setZones(data.map((z) => ({ ...z, price: Number(z.price) }))))
       .catch(() => {});
   }, []);
 
@@ -178,25 +178,19 @@ export default function CheckoutPage() {
                   {zones.length === 0 ? (
                     <p className="text-xs text-neutral-400 italic py-2">Carregando bairros disponíveis...</p>
                   ) : (
-                    <div className="grid grid-cols-1 gap-1.5 max-h-48 overflow-y-auto pr-0.5">
+                    <select
+                      value={selectedZone?.id ?? ""}
+                      onChange={(e) => {
+                        const zone = zones.find((z) => z.id === e.target.value) ?? null;
+                        setSelectedZone(zone);
+                      }}
+                      className="w-full px-3 py-2.5 rounded-lg border border-neutral-200 bg-neutral-50 text-sm text-neutral-700 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
+                    >
+                      <option value="">Selecione seu bairro</option>
                       {zones.map((zone) => (
-                        <button
-                          key={zone.id}
-                          type="button"
-                          onClick={() => setSelectedZone(zone)}
-                          className={`flex items-center justify-between px-3 py-2.5 rounded-lg border text-sm transition ${
-                            selectedZone?.id === zone.id
-                              ? "border-brand bg-brand-light text-brand font-semibold"
-                              : "border-neutral-200 text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50"
-                          }`}
-                        >
-                          <span>{zone.name}</span>
-                          <span className={`text-xs font-bold ${selectedZone?.id === zone.id ? "text-brand" : "text-neutral-500"}`}>
-                            {formatCurrency(zone.price)}
-                          </span>
-                        </button>
+                        <option key={zone.id} value={zone.id}>{zone.name}</option>
                       ))}
-                    </div>
+                    </select>
                   )}
                 </div>
 
