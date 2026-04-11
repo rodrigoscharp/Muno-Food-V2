@@ -3,38 +3,34 @@ import { prisma } from "@/lib/prisma";
 import { resend } from "@/lib/resend";
 import { getRestaurantInfo } from "@/lib/restaurant";
 import { z } from "zod";
-import fs from "fs";
-import path from "path";
-
 const schema = z.object({
   email: z.string().email(),
 });
-
-function getLogoBase64(): string | null {
-  try {
-    const logoPath = path.join(process.cwd(), "public", "munowbg.png");
-    const buffer = fs.readFileSync(logoPath);
-    return `data:image/png;base64,${buffer.toString("base64")}`;
-  } catch {
-    return null;
-  }
-}
 
 function buildEmailHtml({
   userName,
   restaurantName,
   restaurantAddress,
   restaurantPhone,
-  logoSrc,
+  logoUrl,
   resetUrl,
 }: {
   userName: string;
   restaurantName: string;
   restaurantAddress: string;
   restaurantPhone: string;
-  logoSrc: string;
+  logoUrl: string | null;
   resetUrl: string;
 }) {
+  const logoBlock = logoUrl
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 20px;">
+                      <tr>
+                        <td style="background:#ffffff;border-radius:16px;padding:14px 24px;line-height:0;">
+                          <img src="${logoUrl}" alt="${restaurantName}" width="140" height="48" style="display:block;width:140px;height:48px;border:0;" />
+                        </td>
+                      </tr>
+                    </table>`
+    : `<p style="margin:0 0 20px;font-size:26px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;">${restaurantName}</p>`;
 
   return `<!DOCTYPE html>
 <html lang="pt-BR" xmlns="http://www.w3.org/1999/xhtml">
@@ -69,19 +65,7 @@ function buildEmailHtml({
                   <td style="padding:36px 40px 32px;text-align:center;position:relative;">
 
                     <!-- Logo em container branco -->
-                    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 20px;">
-                      <tr>
-                        <td style="background:#ffffff;border-radius:16px;padding:14px 24px;line-height:0;">
-                          <img
-                            src="${logoSrc}"
-                            alt="${restaurantName}"
-                            width="140"
-                            height="48"
-                            style="display:block;width:140px;height:48px;border:0;"
-                          />
-                        </td>
-                      </tr>
-                    </table>
+                    ${logoBlock}
 
                     <!-- Divider -->
                     <div style="width:40px;height:2px;background:rgba(255,255,255,0.4);margin:0 auto 16px;border-radius:2px;"></div>
@@ -238,9 +222,11 @@ export async function POST(req: NextRequest) {
     }
 
     const restaurantInfo = await getRestaurantInfo();
-    const logoBase64 = getLogoBase64();
-    const logoSrc = logoBase64
-      ?? (restaurantInfo.logoUrl.startsWith("http") ? restaurantInfo.logoUrl : `${baseUrl}${restaurantInfo.logoUrl}`);
+
+    // Usa URL absoluta: se já for http (Supabase/CDN), usa direto; se for local, constrói com baseUrl
+    const logoUrl = restaurantInfo.logoUrl.startsWith("http")
+      ? restaurantInfo.logoUrl
+      : `${baseUrl}${restaurantInfo.logoUrl}`;
 
     await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev",
@@ -251,7 +237,7 @@ export async function POST(req: NextRequest) {
         restaurantName: restaurantInfo.name,
         restaurantAddress: restaurantInfo.address,
         restaurantPhone: restaurantInfo.phone,
-        logoSrc,
+        logoUrl,
         resetUrl,
       }),
     });

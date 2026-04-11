@@ -1,6 +1,5 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import Google from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -16,12 +15,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: "/login",
   },
   providers: [
-    ...(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET
-      ? [Google({
-          clientId: process.env.AUTH_GOOGLE_ID,
-          clientSecret: process.env.AUTH_GOOGLE_SECRET,
-        })]
-      : []),
     CredentialsProvider({
       name: "credentials",
       credentials: {
@@ -54,35 +47,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    async signIn({ user, account }) {
-      if (account?.provider === "google") {
-        const existing = await prisma.user.findUnique({
-          where: { email: user.email! },
-        });
-        if (!existing) {
-          await prisma.user.create({
-            data: {
-              name: user.name ?? "Usuário Google",
-              email: user.email!,
-              role: "CUSTOMER",
-            },
-          });
-        }
-      }
-      return true;
-    },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user }) {
       if (user) {
-        if (account?.provider === "google") {
-          const dbUser = await prisma.user.findUnique({
-            where: { email: user.email! },
-          });
-          token.id = dbUser?.id ?? user.id;
-          token.role = dbUser?.role ?? "CUSTOMER";
-        } else {
-          token.id = user.id;
-          token.role = (user as { role: string }).role;
-        }
+        token.id = user.id;
+        token.role = (user as { role: string }).role;
       }
       return token;
     },
