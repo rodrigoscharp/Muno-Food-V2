@@ -69,10 +69,22 @@ model Order {
   user                User?             @relation(fields: [userId], references: [id])
   motoboyId           String?
   motoboy             User?             @relation("MotoboyOrders", fields: [motoboyId], references: [id])
+  tableId             String?
+  table               Table?            @relation(fields: [tableId], references: [id])
   deliveryTracking    DeliveryTracking?
   items               OrderItem[]
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
+}
+
+model Table {
+  id        String   @id @default(cuid())
+  number    Int      @unique
+  name      String?
+  token     String   @unique @default(cuid())
+  active    Boolean  @default(true)
+  orders    Order[]
+  createdAt DateTime @default(now())
 }
 
 model Setting {
@@ -96,6 +108,7 @@ model DeliveryTracking {
 enum DeliveryType {
   PICKUP
   DELIVERY
+  DINE_IN
 }
 
 model OrderItem {

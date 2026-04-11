@@ -15,6 +15,7 @@ import {
   X,
   ChevronRight,
   Bike,
+  TableProperties,
 } from "lucide-react";
 
 const NAV_GROUPS = [
@@ -31,6 +32,7 @@ const NAV_GROUPS = [
       { href: "/adm/restaurante", label: "Gerenciamento", icon: Store,           exact: false },
       { href: "/adm/menu",        label: "Cardápio",      icon: UtensilsCrossed, exact: false },
       { href: "/adm/motoboys",    label: "Motoboys",      icon: Bike,            exact: false },
+      { href: "/adm/mesas",       label: "Mesas (QR)",    icon: TableProperties, exact: false },
     ],
   },
 ];
