@@ -12,7 +12,7 @@ model User {
   id                String             @id @default(cuid())
   name              String
   email             String             @unique
-  password          String
+  password          String?
   role              Role               @default(CUSTOMER)
   orders            Order[]
   motoboyOrders     Order[]            @relation("MotoboyOrders")
@@ -91,6 +91,14 @@ model Setting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique @default(cuid())
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
 model DeliveryTracking {
