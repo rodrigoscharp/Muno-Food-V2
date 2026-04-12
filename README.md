@@ -1,36 +1,237 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Muno V2 — Plataforma de Pedidos e Delivery
 
-## Getting Started
+> "Bateu fome né?" — Sistema completo de gestão de restaurante com delivery, cardápio digital, rastreamento em tempo real e IA integrada.
 
-First, run the development server:
+---
+
+## Visão Geral
+
+O **Muno V2** é uma plataforma full-stack para restaurantes que cobre toda a jornada do pedido: do cardápio digital com recomendações por IA até a entrega com rastreamento GPS em tempo real.
+
+### Funcionalidades por perfil
+
+| Perfil | Funcionalidades |
+|--------|-----------------|
+| **Cliente** | Navegar cardápio, chat com IA para recomendações, carrinho, checkout, pagamento via PIX/Cartão/Dinheiro, rastrear pedido |
+| **Admin** | Dashboard com métricas, gerenciar cardápio/categorias, pedidos, mesas, motoboys, zonas de entrega, horários, configurações |
+| **Cozinha** | Visualizar fila de pedidos e atualizar status de preparo |
+| **Motoboy** | Aceitar entregas, atualizar localização GPS em tempo real, finalizar entrega |
+
+### Destaques
+
+- **IA no Cardápio** — Assistente "Muno" powered by Groq LLaMA 3.3 70B que entende restrições alimentares, nível de fome e sugere itens automaticamente
+- **QR Code para Mesas** — Cada mesa tem token único; cliente escaneia e faz pedido sem login
+- **Rastreamento em Tempo Real** — Mapa Leaflet com atualização de GPS do motoboy
+- **Pagamentos Integrados** — PIX (QR Code), Cartão de Crédito (Mercado Pago) e Dinheiro
+
+---
+
+## Stack Tecnológica
+
+- **Framework:** Next.js 16 (App Router) + React 19
+- **Linguagem:** TypeScript 6
+- **Estilização:** Tailwind CSS 4
+- **Banco de Dados:** PostgreSQL via Supabase
+- **ORM:** Prisma 6
+- **Autenticação:** NextAuth v5 (JWT + Credentials)
+- **Estado:** Zustand
+- **Formulários/Validação:** React Hook Form + Zod
+- **Pagamentos:** Mercado Pago SDK
+- **E-mail:** Resend
+- **IA:** Groq API (LLaMA 3.3 70B)
+- **Mapas:** Leaflet + React Leaflet
+- **Gráficos:** Recharts
+- **Armazenamento de Imagens:** Supabase Storage
+- **Deploy:** Vercel (região São Paulo)
+
+---
+
+## Estrutura do Projeto
+
+```
+src/
+├── app/
+│   ├── api/                    # API Routes (REST)
+│   │   ├── ai/                 # Recomendações via Groq
+│   │   ├── auth/               # Registro, reset de senha
+│   │   ├── categories/
+│   │   ├── delivery-zones/
+│   │   ├── menu/
+│   │   ├── motoboy/orders/
+│   │   ├── orders/
+│   │   ├── payments/           # Mercado Pago + webhook
+│   │   ├── settings/
+│   │   ├── tables/
+│   │   └── users/motoboys/
+│   ├── (client)/               # Páginas do cliente
+│   │   ├── login/ register/
+│   │   ├── cart/ checkout/
+│   │   ├── pedidos/            # Histórico de pedidos
+│   │   ├── track/[orderId]/    # Rastreamento
+│   │   └── esqueci-senha/ redefinir-senha/
+│   ├── adm/                    # Painel administrativo
+│   │   ├── menu/ orders/ mesas/ motoboys/ restaurante/
+│   ├── mesa/[token]/           # Experiência de mesa (QR Code)
+│   │   ├── cardapio/ checkout/ pedido/[orderId]/
+│   └── motoboy/                # Páginas do entregador
+│       ├── login/ pedidos/ delivery/[orderId]/
+├── components/
+│   ├── adm/                    # Componentes do painel admin
+│   ├── menu/                   # Cardápio + IA Assistant
+│   ├── cart/ checkout/ tracking/ kitchen/ motoboy/
+│   └── ui/                     # Componentes base
+├── hooks/                      # useCart, useKitchenOrders, useDeliveryTracking...
+├── lib/                        # auth, prisma, supabase, mercadopago, resend...
+└── types/                      # Tipos compartilhados (OrderStatus, Role, etc.)
+prisma/
+├── schema.prisma               # Schema do banco (9 modelos)
+└── seed.ts                     # Dados de demonstração
+```
+
+---
+
+## Banco de Dados
+
+Principais modelos Prisma:
+
+- **User** — roles: `CUSTOMER`, `ADMIN`, `KITCHEN`, `MOTOBOY`
+- **Order** — status: `PENDING → CONFIRMED → IN_PREPARATION → READY → OUT_FOR_DELIVERY → DELIVERED/CANCELLED`
+- **MenuItem** / **Category**
+- **OrderItem** — com campo `notes` para customizações
+- **Table** — token único para QR Code
+- **DeliveryTracking** — lat/lng em tempo real
+- **DeliveryZone** — zonas com preços distintos
+- **Setting** — configurações chave-valor do restaurante
+- **PasswordResetToken**
+
+---
+
+## Instalação e Configuração
+
+### Pré-requisitos
+
+- Node.js 20+
+- Conta no Supabase (banco + storage)
+- Conta no Mercado Pago (payments)
+- Conta no Resend (e-mails)
+- Conta no Groq (IA)
+
+### 1. Clone e instale dependências
+
+```bash
+git clone <repo-url>
+cd Muno-V2
+npm install
+```
+
+O `postinstall` gera o cliente Prisma e aplica fixes de build automaticamente.
+
+### 2. Configure as variáveis de ambiente
+
+Copie o arquivo de exemplo e preencha com suas credenciais:
+
+```bash
+cp .env.example .env
+```
+
+```env
+# Banco de dados (Supabase)
+DATABASE_URL="postgresql://postgres:[SENHA]@db.[PROJETO].supabase.co:5432/postgres"
+DIRECT_URL="postgresql://postgres:[SENHA]@db.[PROJETO].supabase.co:5432/postgres"
+
+# Supabase (armazenamento de imagens)
+NEXT_PUBLIC_SUPABASE_URL="https://[PROJETO].supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY=""
+SUPABASE_SERVICE_ROLE_KEY=""
+
+# Autenticação
+NEXTAUTH_SECRET=""        # gerar com: openssl rand -base64 32
+NEXTAUTH_URL="http://localhost:3000"
+
+# Pagamentos (Mercado Pago)
+MERCADOPAGO_ACCESS_TOKEN=""
+MERCADOPAGO_WEBHOOK_SECRET=""
+
+# E-mail (Resend)
+RESEND_API_KEY=""
+
+# IA (Groq — tier gratuito: 14.400 req/dia)
+GROQ_API_KEY=""
+
+# URL da aplicação
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
+
+### 3. Configure o banco de dados
+
+```bash
+# Aplicar schema
+npm run db:push
+
+# (Opcional) Popular com dados de demonstração
+npm run db:seed
+```
+
+### 4. Inicie o servidor
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Acesse [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts Disponíveis
 
-## Learn More
+```bash
+npm run dev          # Servidor de desenvolvimento
+npm run build        # Build de produção
+npm run start        # Servidor de produção
+npm run lint         # Verificação ESLint
 
-To learn more about Next.js, take a look at the following resources:
+npm run db:migrate   # Criar e aplicar migrations
+npm run db:push      # Push do schema sem migration (dev)
+npm run db:seed      # Popular banco com dados demo
+npm run db:studio    # Abrir Prisma Studio (localhost:5555)
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Fluxo de Autenticação
 
-## Deploy on Vercel
+1. Registro via `POST /api/auth/register` (senha hasheada com bcrypt, custo 12)
+2. Login com e-mail + senha via NextAuth Credentials
+3. JWT com `id` e `role` do usuário
+4. Rotas protegidas verificam `session?.user?.role`
+5. Recuperação de senha via e-mail (Resend + token temporário)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Integrações
+
+| Serviço | Finalidade |
+|---------|-----------|
+| **Supabase** | PostgreSQL gerenciado + armazenamento de imagens |
+| **Mercado Pago** | PIX (QR Code) e Cartão de Crédito |
+| **Resend** | E-mails transacionais (reset de senha) |
+| **Groq** | LLM para o assistente de cardápio (gratuito) |
+| **Leaflet / OSM** | Mapas de rastreamento de entrega |
+
+---
+
+## Deploy
+
+O projeto está configurado para deploy no **Vercel** (região `gru1` — São Paulo):
+
+```bash
+npm run build
+```
+
+Configure todas as variáveis de ambiente no painel da Vercel antes do deploy. O webhook do Mercado Pago deve apontar para `https://[seu-dominio]/api/payments/webhook`.
+
+---
+
+## Licença
+
+Projeto privado — todos os direitos reservados.
