@@ -9,6 +9,7 @@ import { CartFlyAnimation } from "@/components/menu/CartFlyAnimation";
 import { useState, useEffect, useRef } from "react";
 import { ShoppingCart, User, LogOut, Settings, ChefHat, Menu, X, ClipboardList } from "lucide-react";
 import type { RestaurantInfo } from "@/lib/restaurant";
+import { NotificationBell } from "@/components/menu/NotificationBell";
 
 interface HeaderProps {
   restaurantInfo: RestaurantInfo;
@@ -71,6 +72,9 @@ export function Header({ restaurantInfo }: HeaderProps) {
           </div>
 
           <div className="flex items-center gap-1 ml-auto">
+            {/* Sino de notificações de pedido */}
+            {session && <NotificationBell />}
+
             {/* Cart — id usado pela animação de partícula */}
             <button
               id="cart-btn"
