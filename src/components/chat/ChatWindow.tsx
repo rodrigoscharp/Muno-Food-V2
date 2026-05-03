@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, AlertCircle, RotateCcw } from "lucide-react";
 import { useChat, type ChatMessageData } from "@/hooks/useChat";
 
 export interface QuickReply {
@@ -71,6 +71,11 @@ export function ChatWindow({ orderId, currentRole, quickReplies }: Props) {
     setActivatingId(null);
   }
 
+  async function handleRetry(content: string) {
+    // Remove a mensagem com falha e reenvia
+    await sendMessage(content);
+  }
+
   // Agrupa mensagens por dia
   const grouped: { dayLabel: string; msgs: ChatMessageData[] }[] = [];
   for (const msg of messages) {
@@ -108,7 +113,7 @@ export function ChatWindow({ orderId, currentRole, quickReplies }: Props) {
               </div>
               <div className="space-y-[2px]">
                 {msgs.map((msg, i) => {
-                  const isMine = msg.senderRole === currentRole;
+                  const isMine = msg.senderRole === currentRole || !!msg.pending || !!msg.failed;
                   const next = msgs[i + 1];
                   const isLast = !next || next.senderRole !== msg.senderRole;
                   return (
@@ -117,6 +122,7 @@ export function ChatWindow({ orderId, currentRole, quickReplies }: Props) {
                       msg={msg}
                       isMine={isMine}
                       isLast={isLast}
+                      onRetry={msg.failed ? () => handleRetry(msg.content) : undefined}
                     />
                   );
                 })}
@@ -200,10 +206,12 @@ function MessageBubble({
   msg,
   isMine,
   isLast,
+  onRetry,
 }: {
   msg: ChatMessageData;
   isMine: boolean;
   isLast: boolean;
+  onRetry?: () => void;
 }) {
   return (
     <div className={`flex items-end gap-1.5 ${isMine ? "justify-end" : "justify-start"}`}>
@@ -226,16 +234,44 @@ function MessageBubble({
         )}
 
         <div
-          className={`px-3.5 py-2 text-sm leading-relaxed shadow-sm ${
+          className={`px-3.5 py-2 text-sm leading-relaxed shadow-sm transition-opacity ${
             isMine
-              ? "bg-brand text-white rounded-[18px] rounded-br-[4px]"
+              ? msg.failed
+                ? "bg-red-100 text-red-700 rounded-[18px] rounded-br-[4px]"
+                : "bg-brand text-white rounded-[18px] rounded-br-[4px]"
               : "bg-white text-neutral-800 rounded-[18px] rounded-bl-[4px]"
-          }`}
+          } ${msg.pending ? "opacity-60" : "opacity-100"}`}
         >
           {msg.content}
         </div>
 
-        {isLast && (
+        {/* Status de envio */}
+        {isMine && isLast && (
+          <div className="flex items-center gap-1 px-1">
+            {msg.pending ? (
+              <span className="flex items-center gap-1 text-[10px] text-neutral-400">
+                <Loader2 size={9} className="animate-spin" />
+                Enviando...
+              </span>
+            ) : msg.failed ? (
+              <button
+                onClick={onRetry}
+                className="flex items-center gap-1 text-[10px] text-red-500 hover:text-red-600 transition"
+              >
+                <AlertCircle size={10} />
+                Falha · toque para reenviar
+                <RotateCcw size={9} />
+              </button>
+            ) : (
+              <span className="text-[10px] text-neutral-500">
+                {formatTime(msg.createdAt)}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Horário nas mensagens não-minhas ou quando não é a última */}
+        {!isMine && isLast && (
           <span className="text-[10px] text-neutral-500 px-1">
             {formatTime(msg.createdAt)}
           </span>
