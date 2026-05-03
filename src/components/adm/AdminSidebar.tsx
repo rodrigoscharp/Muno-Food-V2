@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Bike,
   TableProperties,
+  MessageSquare,
 } from "lucide-react";
 
 const NAV_GROUPS = [
@@ -24,6 +25,7 @@ const NAV_GROUPS = [
     items: [
       { href: "/adm",        label: "Dashboard", icon: BarChart2,       exact: true  },
       { href: "/adm/orders", label: "Pedidos",   icon: ShoppingBag,     exact: false },
+      { href: "/adm/chats",  label: "Chats",     icon: MessageSquare,   exact: false },
     ],
   },
   {

@@ -73,6 +73,7 @@ model Order {
   table               Table?            @relation(fields: [tableId], references: [id])
   deliveryTracking    DeliveryTracking?
   items               OrderItem[]
+  chatMessages        ChatMessage[]
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
 }
@@ -160,4 +161,17 @@ model DeliveryZone {
   position  Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ChatMessage {
+  id         String   @id @default(cuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  senderRole String   // "CUSTOMER" | "ADMIN"
+  senderId   String?
+  senderName String?
+  content    String
+  createdAt  DateTime @default(now())
+
+  @@index([orderId])
 }

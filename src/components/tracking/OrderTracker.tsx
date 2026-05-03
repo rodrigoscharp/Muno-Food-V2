@@ -6,6 +6,8 @@ import { OrderStatus, PaymentMethod, PaymentStatus } from "@/types";
 import { LiveDeliveryTracker } from "@/components/delivery/LiveDeliveryTracker";
 import { useEffect, useState, useRef } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
+import { MessageSquare } from "lucide-react";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -435,6 +437,35 @@ export function OrderTracker({ orderId, initialStatus, order }: Props) {
               Obrigado por pedir no Muno. Volte sempre!
             </p>
           </div>
+        )}
+
+        {/* ── Chat com o restaurante ─────────────────────────────────────── */}
+        {!isCancelled && (
+          <Link
+            href={`/pedidos/${orderId}/chat`}
+            className="flex items-center gap-3 bg-white rounded-3xl border border-neutral-100 px-5 py-4 hover:border-brand/30 hover:shadow-sm transition group"
+          >
+            <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center shrink-0">
+              <MessageSquare size={18} className="text-brand" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-neutral-900 leading-tight">
+                Chat com o restaurante
+              </p>
+              <p className="text-xs text-neutral-400 mt-0.5">
+                Tire dúvidas ou informe algo sobre o pedido
+              </p>
+            </div>
+            <svg
+              className="w-4 h-4 text-neutral-300 group-hover:text-brand transition shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
         )}
 
       </div>

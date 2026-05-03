@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { formatCurrency, formatDate, ORDER_STATUS_LABELS } from "@/lib/utils";
-import { ArrowRight, PackageSearch, ShoppingBag } from "lucide-react";
+import { ArrowRight, MessageSquare, PackageSearch, ShoppingBag } from "lucide-react";
 import { OrderStatus } from "@/types";
 
 const STATUS_STYLES: Record<OrderStatus, string> = {
@@ -117,48 +117,58 @@ function OrderCard({
   const isActive = ACTIVE_STATUSES.includes(status);
 
   return (
-    <Link
-      href={`/track/${order.id}`}
-      className="flex items-center justify-between gap-4 bg-white border border-neutral-200 rounded-xl px-5 py-4 hover:border-brand/40 hover:shadow-sm transition group"
-    >
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-          <span className="font-mono text-xs font-bold text-neutral-500">
-            #{order.id.slice(-6).toUpperCase()}
-          </span>
-          <span
-            className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[status]}`}
-          >
-            {ORDER_STATUS_LABELS[status]}
-          </span>
-          {isActive && (
-            <span className="flex items-center gap-1 text-xs text-brand font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse inline-block" />
-              Ao vivo
+    <div className="bg-white border border-neutral-200 rounded-xl px-5 py-4 hover:border-brand/40 hover:shadow-sm transition">
+      <Link href={`/track/${order.id}`} className="flex items-center justify-between gap-4 group">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span className="font-mono text-xs font-bold text-neutral-500">
+              #{order.id.slice(-6).toUpperCase()}
             </span>
-          )}
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[status]}`}
+            >
+              {ORDER_STATUS_LABELS[status]}
+            </span>
+            {isActive && (
+              <span className="flex items-center gap-1 text-xs text-brand font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse inline-block" />
+                Ao vivo
+              </span>
+            )}
+          </div>
+
+          <p className="text-sm text-neutral-700 truncate">
+            {order.items
+              .map((i) => `${i.quantity}× ${i.menuItem.name}`)
+              .join(", ")}
+          </p>
+
+          <p className="text-xs text-neutral-400 mt-1">
+            {formatDate(order.createdAt)}
+          </p>
         </div>
 
-        <p className="text-sm text-neutral-700 truncate">
-          {order.items
-            .map((i) => `${i.quantity}× ${i.menuItem.name}`)
-            .join(", ")}
-        </p>
+        <div className="flex items-center gap-3 shrink-0">
+          <span className="font-bold text-neutral-900 text-sm">
+            {formatCurrency(Number(order.total))}
+          </span>
+          <ArrowRight
+            size={16}
+            className="text-neutral-300 group-hover:text-brand transition"
+          />
+        </div>
+      </Link>
 
-        <p className="text-xs text-neutral-400 mt-1">
-          {formatDate(order.createdAt)}
-        </p>
+      {/* Botão de chat */}
+      <div className="mt-3 pt-3 border-t border-neutral-100 flex justify-end">
+        <Link
+          href={`/pedidos/${order.id}/chat`}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-500 hover:text-brand transition"
+        >
+          <MessageSquare size={13} />
+          Chat com o restaurante
+        </Link>
       </div>
-
-      <div className="flex items-center gap-3 shrink-0">
-        <span className="font-bold text-neutral-900 text-sm">
-          {formatCurrency(Number(order.total))}
-        </span>
-        <ArrowRight
-          size={16}
-          className="text-neutral-300 group-hover:text-brand transition"
-        />
-      </div>
-    </Link>
+    </div>
   );
 }
