@@ -4,6 +4,7 @@ import { useState } from "react";
 import { MessageSquare, ArrowLeft } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { ChatWindow } from "@/components/chat/ChatWindow";
+import { prefetchChat } from "@/hooks/useChat";
 import { OrderStatusBadge } from "@/components/chat/OrderStatusBadge";
 import { Store } from "lucide-react";
 import { OrderStatus } from "@/types";
@@ -65,6 +66,7 @@ export function AdminChatsClient({ orders, adminName }: Props) {
                 <button
                   key={order.id}
                   onClick={() => setSelectedId(order.id)}
+                  onMouseEnter={() => prefetchChat(order.id)}
                   className={`w-full text-left rounded-xl px-4 py-3 transition border ${
                     isSelected
                       ? "bg-brand/5 border-brand/30"
