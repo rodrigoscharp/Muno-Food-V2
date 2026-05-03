@@ -58,6 +58,8 @@ export function ChatWindow({ orderId, currentRole, quickReplies }: Props) {
     const ok = await sendMessage(text.trim());
     if (ok) {
       setText("");
+      // Reset textarea height
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
       textareaRef.current?.focus();
     }
   }
@@ -69,7 +71,7 @@ export function ChatWindow({ orderId, currentRole, quickReplies }: Props) {
     setActivatingId(null);
   }
 
-  // Agrupa mensagens por dia para separadores de data
+  // Agrupa mensagens por dia
   const grouped: { dayLabel: string; msgs: ChatMessageData[] }[] = [];
   for (const msg of messages) {
     const label = formatDayLabel(msg.createdAt);
@@ -82,16 +84,16 @@ export function ChatWindow({ orderId, currentRole, quickReplies }: Props) {
   }
 
   return (
-    <div className="flex flex-col h-full" style={{ background: "#f0ece8" }}>
+    <div className="flex flex-col h-full" style={{ background: "#ece5dd" }}>
 
-      {/* Área de mensagens */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+      {/* Área de mensagens — cresce e rola */}
+      <div className="flex-1 overflow-y-auto overscroll-contain px-3 sm:px-5 py-3 space-y-1">
         {loading ? (
           <div className="flex justify-center py-16">
             <Loader2 size={22} className="animate-spin text-neutral-400" />
           </div>
         ) : messages.length === 0 && !showQuickReplies ? (
-          <div className="flex flex-col items-center justify-center h-full py-16 gap-2">
+          <div className="flex items-center justify-center h-full py-12">
             <p className="text-sm text-neutral-400 text-center">
               Nenhuma mensagem ainda.
             </p>
@@ -99,13 +101,12 @@ export function ChatWindow({ orderId, currentRole, quickReplies }: Props) {
         ) : (
           grouped.map(({ dayLabel, msgs }) => (
             <div key={dayLabel}>
-              {/* Separador de dia */}
-              <div className="flex items-center justify-center my-4">
-                <span className="text-[11px] font-medium text-neutral-500 bg-white/70 px-3 py-1 rounded-full shadow-sm">
+              <div className="flex items-center justify-center my-3">
+                <span className="text-[11px] font-medium text-neutral-500 bg-white/75 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm">
                   {dayLabel}
                 </span>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-[2px]">
                 {msgs.map((msg, i) => {
                   const isMine = msg.senderRole === currentRole;
                   const next = msgs[i + 1];
@@ -126,9 +127,9 @@ export function ChatWindow({ orderId, currentRole, quickReplies }: Props) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Quick replies */}
+      {/* Quick replies — altura máxima com scroll para telas pequenas */}
       {showQuickReplies && (
-        <div className="px-4 pb-3 pt-2 bg-white/80 border-t border-neutral-200">
+        <div className="shrink-0 max-h-[45dvh] overflow-y-auto bg-white/90 border-t border-neutral-200 px-3 sm:px-5 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-2">
             Selecione sua situação
           </p>
@@ -141,7 +142,7 @@ export function ChatWindow({ orderId, currentRole, quickReplies }: Props) {
                   key={qr.message}
                   onClick={() => handleQuickReply(qr)}
                   disabled={sending}
-                  className="flex items-center gap-3 w-full text-left px-4 py-3 rounded-2xl bg-white border border-neutral-200 hover:border-brand/50 hover:shadow-sm active:scale-[0.98] transition-all text-sm text-neutral-800 disabled:opacity-60"
+                  className="flex items-center gap-3 w-full text-left px-4 py-3 rounded-2xl bg-white border border-neutral-200 hover:border-brand/40 hover:bg-brand/5 active:scale-[0.98] transition-all text-sm text-neutral-800 disabled:opacity-60 shadow-sm"
                 >
                   {isActivating ? (
                     <Loader2 size={16} className="animate-spin text-brand shrink-0" />
@@ -156,19 +157,18 @@ export function ChatWindow({ orderId, currentRole, quickReplies }: Props) {
         </div>
       )}
 
-      {/* Input */}
+      {/* Input — safe-area-inset-bottom para iOS com home bar */}
       <form
         onSubmit={handleSubmit}
-        className="px-3 py-3 bg-white border-t border-neutral-200 flex items-end gap-2"
+        className="shrink-0 flex items-end gap-2 bg-white border-t border-neutral-200 px-3 sm:px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]"
       >
         <textarea
           ref={textareaRef}
           value={text}
           onChange={(e) => {
             setText(e.target.value);
-            // Auto-resize
             e.target.style.height = "auto";
-            e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+            e.target.style.height = Math.min(e.target.scrollHeight, 128) + "px";
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
@@ -176,14 +176,14 @@ export function ChatWindow({ orderId, currentRole, quickReplies }: Props) {
               handleSubmit(e as unknown as React.FormEvent);
             }
           }}
-          placeholder={showQuickReplies ? "Ou escreva sua mensagem..." : "Mensagem..."}
+          placeholder={showQuickReplies ? "Ou escreva aqui..." : "Mensagem..."}
           rows={1}
           className="flex-1 resize-none rounded-2xl border border-neutral-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand/50 transition bg-neutral-50 leading-relaxed"
         />
         <button
           type="submit"
           disabled={!text.trim() || sending}
-          className="w-10 h-10 flex items-center justify-center rounded-full bg-brand text-white disabled:opacity-40 transition hover:opacity-90 active:scale-95 shrink-0"
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-brand text-white disabled:opacity-40 transition hover:opacity-90 active:scale-95 shrink-0 mb-0.5"
         >
           {sending && !activatingId ? (
             <Loader2 size={16} className="animate-spin" />
@@ -207,9 +207,9 @@ function MessageBubble({
 }) {
   return (
     <div className={`flex items-end gap-1.5 ${isMine ? "justify-end" : "justify-start"}`}>
-      {/* Avatar restaurante (lado esquerdo, só na última do grupo) */}
+      {/* Avatar restaurante */}
       {!isMine && (
-        <div className="w-6 shrink-0">
+        <div className="w-6 shrink-0 mb-0.5">
           {isLast && (
             <div className="w-6 h-6 rounded-full bg-brand flex items-center justify-center text-[10px] text-white font-bold">
               R
@@ -218,8 +218,7 @@ function MessageBubble({
         </div>
       )}
 
-      <div className={`max-w-[78%] flex flex-col ${isMine ? "items-end" : "items-start"} gap-0.5`}>
-        {/* Nome do remetente (apenas admin, apenas no primeiro do grupo) */}
+      <div className={`max-w-[82%] sm:max-w-[70%] flex flex-col ${isMine ? "items-end" : "items-start"} gap-0.5`}>
         {!isMine && isLast && (
           <span className="text-[11px] font-semibold text-brand px-1">
             {msg.senderRole === "ADMIN" ? "Restaurante" : (msg.senderName ?? "Cliente")}
@@ -227,7 +226,7 @@ function MessageBubble({
         )}
 
         <div
-          className={`relative px-3.5 py-2 text-sm leading-relaxed shadow-sm ${
+          className={`px-3.5 py-2 text-sm leading-relaxed shadow-sm ${
             isMine
               ? "bg-brand text-white rounded-[18px] rounded-br-[4px]"
               : "bg-white text-neutral-800 rounded-[18px] rounded-bl-[4px]"
@@ -237,7 +236,7 @@ function MessageBubble({
         </div>
 
         {isLast && (
-          <span className="text-[10px] text-neutral-400 px-1">
+          <span className="text-[10px] text-neutral-500 px-1">
             {formatTime(msg.createdAt)}
           </span>
         )}

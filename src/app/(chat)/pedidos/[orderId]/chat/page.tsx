@@ -5,6 +5,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Store } from "lucide-react";
 import { ChatWindow, type QuickReply } from "@/components/chat/ChatWindow";
+import { OrderStatusBadge } from "@/components/chat/OrderStatusBadge";
 import { OrderStatus } from "@/types";
 
 type Props = { params: Promise<{ orderId: string }> };
@@ -93,9 +94,14 @@ export default async function OrderChatPage({ params }: Props) {
             Pedido #{orderId.slice(-6).toUpperCase()}
           </p>
         </div>
+
+        <OrderStatusBadge
+          orderId={orderId}
+          initialStatus={order.status as OrderStatus}
+        />
       </header>
 
-      {/* Chat ocupa o restante da tela */}
+      {/* Chat ocupa o restante */}
       <div className="flex-1 min-h-0">
         <ChatWindow
           orderId={orderId}
