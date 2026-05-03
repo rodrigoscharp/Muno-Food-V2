@@ -12,6 +12,7 @@ import {
   PackageCheck,
   XCircle,
   Trash2,
+  MessageSquare,
 } from "lucide-react";
 import { useOrderNotifications, OrderNotification } from "@/hooks/useOrderNotifications";
 import { OrderStatus } from "@/types";
@@ -46,16 +47,20 @@ function NotificationItem({
   notification: OrderNotification;
   onRead: (id: string) => void;
 }) {
-  const meta = STATUS_META[notification.status] ?? {
-    icon: Bell,
-    color: "text-neutral-500",
-    bg: "bg-neutral-50",
-  };
+  const isChat = notification.type === "chat";
+
+  const meta = isChat
+    ? { icon: MessageSquare, color: "text-brand", bg: "bg-brand/10" }
+    : STATUS_META[notification.status] ?? { icon: Bell, color: "text-neutral-500", bg: "bg-neutral-50" };
+
   const Icon = meta.icon;
+  const href = isChat
+    ? `/pedidos/${notification.orderId}/chat`
+    : `/track/${notification.orderId}`;
 
   return (
     <Link
-      href={`/track/${notification.orderId}`}
+      href={href}
       onClick={() => onRead(notification.id)}
       className={`flex items-start gap-3 px-4 py-3 hover:bg-neutral-50 transition ${
         !notification.read ? "bg-brand-light/40" : ""
@@ -69,7 +74,7 @@ function NotificationItem({
           {notification.message}
         </p>
         {notification.description && (
-          <p className="text-xs text-neutral-500 mt-0.5 leading-snug">
+          <p className="text-xs text-neutral-500 mt-0.5 leading-snug truncate">
             {notification.description}
           </p>
         )}

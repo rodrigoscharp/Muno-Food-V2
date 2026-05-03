@@ -9,6 +9,7 @@ import { DeliveryType, OrderStatus, OrderWithItems } from "@/types";
 export interface OrderNotification {
   id: string;
   orderId: string;
+  type: "status" | "chat";
   status: OrderStatus;
   /** Mensagem principal exibida no sino */
   message: string;
@@ -125,6 +126,7 @@ export function useOrderNotifications() {
       const notification: OrderNotification = {
         id: `${orderId}-${status}-${Date.now()}`,
         orderId,
+        type: "status",
         status,
         message,
         description,
@@ -133,7 +135,7 @@ export function useOrderNotifications() {
       };
 
       setNotifications((prev) => {
-        const exists = prev.some((n) => n.orderId === orderId && n.status === status);
+        const exists = prev.some((n) => n.orderId === orderId && n.status === status && n.type === "status");
         if (exists) return prev;
         const updated = [notification, ...prev].slice(0, MAX_NOTIFICATIONS);
         saveToStorage(updated);
@@ -151,8 +153,58 @@ export function useOrderNotifications() {
     []
   );
 
+  const addChatNotification = useCallback(
+    (msgId: string, orderId: string, content: string, timestamp: string) => {
+      const notification: OrderNotification = {
+        id: `chat-${msgId}`,
+        orderId,
+        type: "chat",
+        status: "CONFIRMED", // campo obrigatório no type, não usado para chat
+        message: "Mensagem do restaurante",
+        description: content.length > 60 ? content.slice(0, 57) + "…" : content,
+        timestamp,
+        read: false,
+      };
+
+      setNotifications((prev) => {
+        if (prev.some((n) => n.id === notification.id)) return prev;
+        const updated = [notification, ...prev].slice(0, MAX_NOTIFICATIONS);
+        saveToStorage(updated);
+        return updated;
+      });
+
+      toast.info("💬 Mensagem do restaurante", {
+        description: notification.description,
+        duration: 7000,
+        action: {
+          label: "Ver chat",
+          onClick: () => { window.location.href = `/pedidos/${orderId}/chat`; },
+        },
+      });
+    },
+    []
+  );
+
   useEffect(() => {
     if (!userId) return;
+
+    // Timestamp da última mensagem de chat vista — inicia com "agora" para não
+    // notificar mensagens históricas ao abrir o app
+    const lastChatCheck = { current: new Date().toISOString() };
+
+    async function fetchChatMessages() {
+      try {
+        const res = await fetch(`/api/chat/unread?since=${encodeURIComponent(lastChatCheck.current)}`);
+        if (!res.ok) return;
+        const msgs: { id: string; orderId: string; content: string; createdAt: string }[] = await res.json();
+        if (msgs.length === 0) return;
+        // Avança o cursor para a mensagem mais recente
+        lastChatCheck.current = msgs[msgs.length - 1].createdAt;
+        for (const msg of msgs) {
+          addChatNotification(msg.id, msg.orderId, msg.content, msg.createdAt);
+        }
+      } catch {}
+    }
 
     async function fetchAndCompare() {
       try {
@@ -207,12 +259,14 @@ export function useOrderNotifications() {
       .subscribe();
 
     const poll = setInterval(fetchAndCompare, POLL_INTERVAL);
+    const chatPoll = setInterval(fetchChatMessages, POLL_INTERVAL);
 
     return () => {
       supabase.removeChannel(channel);
       clearInterval(poll);
+      clearInterval(chatPoll);
     };
-  }, [userId, addNotification]);
+  }, [userId, addNotification, addChatNotification]);
 
   const markAllAsRead = useCallback(() => {
     setNotifications((prev) => {
