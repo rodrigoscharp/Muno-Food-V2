@@ -3,7 +3,9 @@ import { DeliveryTimeControl } from "@/components/adm/DeliveryTimeControl";
 import { BusinessHoursControl, WeekSchedule } from "@/components/adm/BusinessHoursControl";
 import { RestaurantInfoControl } from "@/components/adm/RestaurantInfoControl";
 import { DeliveryZonesControl } from "@/components/adm/DeliveryZonesControl";
+import { PrinterControl } from "@/components/adm/PrinterControl";
 import { getRestaurantInfo } from "@/lib/restaurant";
+import type { PrinterConfig } from "@/app/api/settings/printer/route";
 
 const DEFAULT_HOURS: WeekSchedule = {
   monday:    { open: true,  from: "11:00", to: "22:00" },
@@ -16,12 +18,17 @@ const DEFAULT_HOURS: WeekSchedule = {
 };
 
 export default async function RestauranteAdminPage() {
-  const [deliveryTimeSetting, businessHoursSetting, restaurantInfo, deliveryZones] = await Promise.all([
+  const [deliveryTimeSetting, businessHoursSetting, restaurantInfo, deliveryZones, printerSetting] = await Promise.all([
     prisma.setting.findUnique({ where: { key: "delivery_time_minutes" } }),
     prisma.setting.findUnique({ where: { key: "business_hours" } }),
     getRestaurantInfo(),
     prisma.deliveryZone.findMany({ where: { active: true }, orderBy: { position: "asc" } }),
+    prisma.setting.findUnique({ where: { key: "printer_config" } }),
   ]);
+
+  const printerConfig: PrinterConfig = printerSetting
+    ? { enabled: false, paperWidth: "80mm", ...JSON.parse(printerSetting.value) }
+    : { enabled: false, paperWidth: "80mm" };
 
   const deliveryMinutes = deliveryTimeSetting
     ? parseInt(deliveryTimeSetting.value, 10)
@@ -40,6 +47,7 @@ export default async function RestauranteAdminPage() {
         <div className="lg:col-span-1 space-y-6">
           <DeliveryTimeControl initialMinutes={deliveryMinutes} />
           <RestaurantInfoControl initial={restaurantInfo} />
+          <PrinterControl initial={printerConfig} />
         </div>
         <div className="lg:col-span-3 space-y-6">
           <BusinessHoursControl initialSchedule={schedule} />

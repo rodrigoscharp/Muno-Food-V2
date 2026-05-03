@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useKitchenOrders } from "@/hooks/useKitchenOrders";
 import { formatCurrency, ORDER_STATUS_LABELS } from "@/lib/utils";
 import { OrderStatus, OrderWithItems } from "@/types";
-import { Clock, ChefHat, CheckCircle, RefreshCw, AlertTriangle, ChevronLeft, Bike, ShoppingBag, UtensilsCrossed } from "lucide-react";
+import { Clock, ChefHat, CheckCircle, RefreshCw, AlertTriangle, ChevronLeft, Bike, ShoppingBag, UtensilsCrossed, Printer } from "lucide-react";
 import { toast } from "sonner";
+import type { PrinterConfig } from "@/app/api/settings/printer/route";
 
 const KITCHEN_COLUMNS: { status: OrderStatus; label: string; icon: React.ReactNode; color: string }[] = [
   { status: "PENDING", label: "Pendente", icon: <Clock size={15} />, color: "yellow" },
@@ -55,6 +57,14 @@ const DELIVERY_TYPE_META = {
 
 export default function KitchenPage() {
   const { orders, loading, error, refetch, updateOrderStatus, removeOrder } = useKitchenOrders();
+  const [printer, setPrinter] = useState<PrinterConfig>({ enabled: false, paperWidth: "80mm" });
+
+  useEffect(() => {
+    fetch("/api/settings/printer")
+      .then((r) => r.json())
+      .then((cfg: PrinterConfig) => setPrinter(cfg))
+      .catch(() => {});
+  }, []);
 
   async function advanceStatus(order: OrderWithItems) {
     const nextStatus = NEXT_STATUS[order.status];
@@ -173,6 +183,8 @@ export default function KitchenPage() {
                     onCancel={() => cancelOrder(order)}
                     hasNext={!!NEXT_STATUS[order.status]}
                     hasPrev={!!PREV_STATUS[order.status]}
+                    printerEnabled={printer.enabled}
+                    paperWidth={printer.paperWidth}
                   />
                 ))}
 
@@ -197,6 +209,8 @@ function OrderCard({
   onCancel,
   hasNext,
   hasPrev,
+  printerEnabled,
+  paperWidth,
 }: {
   order: OrderWithItems;
   onAdvance: () => void;
@@ -204,10 +218,17 @@ function OrderCard({
   onCancel: () => void;
   hasNext: boolean;
   hasPrev: boolean;
+  printerEnabled: boolean;
+  paperWidth: "58mm" | "80mm";
 }) {
   const elapsed = Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 60_000);
   const deliveryMeta = DELIVERY_TYPE_META[order.deliveryType] ?? DELIVERY_TYPE_META.PICKUP;
   const DeliveryIcon = deliveryMeta.icon;
+
+  async function handlePrint() {
+    const { printOrder } = await import("@/lib/printOrder");
+    printOrder(order, paperWidth);
+  }
 
   return (
     <div className="bg-neutral-900 rounded-lg p-3 border border-neutral-800 flex flex-col gap-2">
@@ -257,9 +278,20 @@ function OrderCard({
 
       {/* Rodapé: valor + ações */}
       <div className="flex items-center justify-between pt-1 border-t border-neutral-800 mt-1">
-        <span className="text-xs font-semibold text-neutral-400">
-          {formatCurrency(order.total)}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-semibold text-neutral-400">
+            {formatCurrency(order.total)}
+          </span>
+          {printerEnabled && (
+            <button
+              onClick={handlePrint}
+              title="Imprimir pedido"
+              className="text-neutral-500 hover:text-white transition p-0.5 rounded"
+            >
+              <Printer size={13} />
+            </button>
+          )}
+        </div>
         <div className="flex gap-1">
           {hasPrev && (
             <button
