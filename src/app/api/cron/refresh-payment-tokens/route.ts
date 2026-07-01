@@ -3,6 +3,7 @@ import { prismaUnscoped } from "@/lib/prisma";
 import { getPaymentProvider } from "@/lib/payments/factory";
 import { buildTenantBaseUrl } from "@/lib/tenant-url";
 import { resend } from "@/lib/resend";
+import { extractErrorMessage } from "@/lib/error-message";
 
 // Renova o access_token de conexões que vencem nos próximos 15 dias.
 // Rodagem diária via Vercel Cron (ver vercel.json) — protegida por
@@ -39,8 +40,7 @@ export async function GET(req: NextRequest) {
       failed++;
       // Só a mensagem — nunca o objeto de erro cru (pode embutir tokens
       // usados na chamada de refresh).
-      const message = err instanceof Error ? err.message : String(err);
-      console.error(`[cron/refresh-payment-tokens] Erro ao renovar conexão ${connection.id}: ${message}`);
+      console.error(`[cron/refresh-payment-tokens] Erro ao renovar conexão ${connection.id}: ${extractErrorMessage(err)}`);
     }
   }
 

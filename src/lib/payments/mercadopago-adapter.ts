@@ -4,6 +4,8 @@ import type { PaymentConnection } from "@prisma/client";
 import { prismaUnscoped } from "@/lib/prisma";
 import { signOAuthState } from "@/lib/oauth-state";
 import { encryptSecret, decryptSecret } from "@/lib/crypto";
+import { extractErrorMessage } from "@/lib/error-message";
+import { InvalidWebhookSignatureError } from "./types";
 import type { Charge, ChargeableOrder, PaymentProvider, WebhookResult } from "./types";
 
 const PLATFORM_ACCESS_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN;
@@ -73,7 +75,14 @@ function isValidSignature(signature: string | null, requestId: string | null, da
   const manifest = `id:${dataId ?? ""};request-id:${requestId ?? ""};ts:${ts};`;
   const expected = crypto.createHmac("sha256", WEBHOOK_SECRET).update(manifest).digest("hex");
 
-  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(hash));
+  // timingSafeEqual lança RangeError se os buffers tiverem tamanhos
+  // diferentes (ex.: alguém manda um v1 curto/forjado) — trata como
+  // assinatura inválida em vez de deixar a exceção escapar.
+  const expectedBuf = Buffer.from(expected);
+  const hashBuf = Buffer.from(hash);
+  if (expectedBuf.length !== hashBuf.length) return false;
+
+  return crypto.timingSafeEqual(expectedBuf, hashBuf);
 }
 
 export class MercadoPagoAdapter implements PaymentProvider {
@@ -147,8 +156,8 @@ export class MercadoPagoAdapter implements PaymentProvider {
     if (body?.type !== "payment" || !body?.data?.id) return null;
 
     if (!isValidSignature(signature, requestId, body.data.id)) {
-      console.error("[mercadopago] Assinatura do webhook inválida — ignorando notificação.");
-      return null;
+      console.error("[mercadopago] Assinatura do webhook inválida — rejeitando notificação.");
+      throw new InvalidWebhookSignatureError();
     }
 
     // O token usado aqui é sempre o da plataforma: a Muno é sempre
@@ -270,8 +279,7 @@ export class MercadoPagoAdapter implements PaymentProvider {
       // Nunca loga o objeto de erro inteiro aqui — algumas libs HTTP
       // embutem o corpo da request (com client_secret/refresh_token) no
       // próprio erro. Só a mensagem, nunca o objeto cru.
-      const message = err instanceof Error ? err.message : String(err);
-      console.error(`[mercadopago] Falha ao renovar token do tenant ${connection.tenantId}: ${message}`);
+      console.error(`[mercadopago] Falha ao renovar token do tenant ${connection.tenantId}: ${extractErrorMessage(err)}`);
       return prismaUnscoped.paymentConnection.update({
         where: { id: connection.id },
         data: { status: "needs_reauth" },

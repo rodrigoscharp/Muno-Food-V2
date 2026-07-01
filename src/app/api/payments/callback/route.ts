@@ -3,6 +3,7 @@ import { prismaUnscoped } from "@/lib/prisma";
 import { getPaymentProvider } from "@/lib/payments/factory";
 import { verifyOAuthState } from "@/lib/oauth-state";
 import { buildTenantBaseUrl } from "@/lib/tenant-url";
+import { extractErrorMessage } from "@/lib/error-message";
 
 // GET /api/payments/callback — o Mercado Pago redireciona pra cá depois do
 // tenant autorizar o app. Não passa pelo subdomínio do tenant (redirect_uri
@@ -41,10 +42,7 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     // Só a mensagem — a troca de code por token embute client_secret e o
     // token retornado na chamada; nunca logar o erro cru aqui.
-    console.error(
-      "[payments/callback] Falha ao trocar code por token:",
-      err instanceof Error ? err.message : String(err)
-    );
+    console.error("[payments/callback] Falha ao trocar code por token:", extractErrorMessage(err));
     return NextResponse.redirect(`${baseUrl}/adm/restaurante?mp=error`);
   }
 }

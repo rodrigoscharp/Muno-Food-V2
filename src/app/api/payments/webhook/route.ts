@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma, prismaUnscoped } from "@/lib/prisma";
 import { runWithTenant } from "@/lib/tenant-context";
 import { getPaymentProvider } from "@/lib/payments/factory";
+import { InvalidWebhookSignatureError } from "@/lib/payments/types";
 import { broadcastTenantEvent } from "@/lib/realtime";
+import { extractErrorMessage } from "@/lib/error-message";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,7 +14,15 @@ export async function POST(req: NextRequest) {
 
     // Hoje só existe o provider Mercado Pago; quando outros providers
     // existirem, o tipo de evento no payload decide qual usar.
-    const result = await getPaymentProvider().handleWebhook(body, signature, requestId);
+    let result;
+    try {
+      result = await getPaymentProvider().handleWebhook(body, signature, requestId);
+    } catch (err) {
+      if (err instanceof InvalidWebhookSignatureError) {
+        return NextResponse.json({ error: "Assinatura inválida" }, { status: 401 });
+      }
+      throw err;
+    }
     if (!result) return NextResponse.json({ received: true });
 
     // O webhook não vem pelo subdomínio do tenant (é a Mercado Pago batendo
@@ -64,7 +74,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     // Só a mensagem — nunca o objeto de erro cru (pode embutir o access
     // token usado pra consultar o pagamento).
-    console.error("Webhook error:", err instanceof Error ? err.message : String(err));
+    console.error("Webhook error:", extractErrorMessage(err));
     return NextResponse.json({ error: "Webhook error" }, { status: 500 });
   }
 }

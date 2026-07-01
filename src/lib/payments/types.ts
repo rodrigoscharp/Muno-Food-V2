@@ -31,14 +31,27 @@ export interface WebhookResult {
   status: "approved" | "rejected" | "cancelled" | "refunded" | "pending" | "unknown";
 }
 
+// Lançada quando a assinatura do webhook não bate — distinta de "payload
+// não é uma notificação de pagamento relevante" (que retorna null e é OK
+// responder 200). O caller deve responder 401/403 especificamente pra esse
+// erro, nunca 200.
+export class InvalidWebhookSignatureError extends Error {
+  constructor() {
+    super("Assinatura do webhook inválida");
+    this.name = "InvalidWebhookSignatureError";
+  }
+}
+
 export interface PaymentProvider {
   // connection é null quando o tenant ainda não conectou a própria conta —
   // nesse caso o adapter deve usar a conta da plataforma, sem split.
   createCharge(order: ChargeableOrder, connection: PaymentConnection | null): Promise<Charge>;
 
   // Retorna null se o payload não for uma notificação de pagamento relevante
-  // ou se a assinatura for inválida. requestId vem do header x-request-id,
-  // parte do manifesto assinado junto com o header x-signature.
+  // (responder 200 normalmente). Lança InvalidWebhookSignatureError se a
+  // assinatura não bater (o caller deve responder 401/403, nunca 200).
+  // requestId vem do header x-request-id, parte do manifesto assinado
+  // junto com o header x-signature.
   handleWebhook(payload: unknown, signature: string | null, requestId: string | null): Promise<WebhookResult | null>;
 
   getOnboardingUrl(tenantId: string): Promise<string>;

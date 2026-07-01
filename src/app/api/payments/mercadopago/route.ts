@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { apiError, getTenantIdFromRequest, withTenant } from "@/lib/api";
 import { getPaymentProviderForTenant } from "@/lib/payments/factory";
+import { extractErrorMessage } from "@/lib/error-message";
 import { z } from "zod";
 
 const schema = z.object({
@@ -68,7 +69,7 @@ async function handlePost(req: NextRequest, tenantId: string) {
   } catch (err) {
     // Só a mensagem — o erro pode embutir o corpo da request (que inclui
     // o access_token usado na chamada).
-    console.error("Mercado Pago error:", err instanceof Error ? err.message : String(err));
+    console.error("Mercado Pago error:", extractErrorMessage(err));
     return NextResponse.json({ error: "Erro ao criar pagamento" }, { status: 500 });
   }
 }
