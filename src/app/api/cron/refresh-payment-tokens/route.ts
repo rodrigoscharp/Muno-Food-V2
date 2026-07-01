@@ -37,7 +37,10 @@ export async function GET(req: NextRequest) {
       }
     } catch (err) {
       failed++;
-      console.error(`[cron/refresh-payment-tokens] Erro ao renovar conexão ${connection.id}:`, err);
+      // Só a mensagem — nunca o objeto de erro cru (pode embutir tokens
+      // usados na chamada de refresh).
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[cron/refresh-payment-tokens] Erro ao renovar conexão ${connection.id}: ${message}`);
     }
   }
 

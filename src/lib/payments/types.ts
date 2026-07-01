@@ -28,7 +28,7 @@ export interface Charge {
 export interface WebhookResult {
   orderId: string;
   providerPaymentId: string;
-  status: "approved" | "rejected" | "cancelled" | "pending" | "unknown";
+  status: "approved" | "rejected" | "cancelled" | "refunded" | "pending" | "unknown";
 }
 
 export interface PaymentProvider {

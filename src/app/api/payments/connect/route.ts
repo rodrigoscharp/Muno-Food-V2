@@ -14,10 +14,8 @@ export async function GET() {
     const url = await getPaymentProvider().getOnboardingUrl(session.user.tenantId);
     return NextResponse.redirect(url);
   } catch (err) {
-    console.error("[payments/connect] Erro ao gerar link de conexão:", err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Erro ao gerar link de conexão" },
-      { status: 500 }
-    );
+    const message = err instanceof Error ? err.message : "Erro ao gerar link de conexão";
+    console.error("[payments/connect] Erro ao gerar link de conexão:", message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

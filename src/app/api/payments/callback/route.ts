@@ -39,7 +39,12 @@ export async function GET(req: NextRequest) {
     await getPaymentProvider().exchangeAuthorizationCode(code, verified.tenantId);
     return NextResponse.redirect(`${baseUrl}/adm/restaurante?mp=success`);
   } catch (err) {
-    console.error("[payments/callback] Falha ao trocar code por token:", err);
+    // Só a mensagem — a troca de code por token embute client_secret e o
+    // token retornado na chamada; nunca logar o erro cru aqui.
+    console.error(
+      "[payments/callback] Falha ao trocar code por token:",
+      err instanceof Error ? err.message : String(err)
+    );
     return NextResponse.redirect(`${baseUrl}/adm/restaurante?mp=error`);
   }
 }

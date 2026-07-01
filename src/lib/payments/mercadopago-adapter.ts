@@ -3,6 +3,7 @@ import { MercadoPagoConfig, OAuth, Payment, Preference } from "mercadopago";
 import type { PaymentConnection } from "@prisma/client";
 import { prismaUnscoped } from "@/lib/prisma";
 import { signOAuthState } from "@/lib/oauth-state";
+import { encryptSecret, decryptSecret } from "@/lib/crypto";
 import type { Charge, ChargeableOrder, PaymentProvider, WebhookResult } from "./types";
 
 const PLATFORM_ACCESS_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN;
@@ -17,7 +18,7 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
 const PLATFORM_COMMISSION_PERCENT = Number(process.env.PLATFORM_COMMISSION_PERCENT ?? "5");
 
 function configFor(connection: PaymentConnection | null): MercadoPagoConfig {
-  const accessToken = connection?.accessToken ?? PLATFORM_ACCESS_TOKEN;
+  const accessToken = connection ? decryptSecret(connection.accessToken) : PLATFORM_ACCESS_TOKEN;
   if (!accessToken) {
     throw new Error("MERCADOPAGO_ACCESS_TOKEN não configurado e tenant sem conta conectada.");
   }
@@ -37,6 +38,9 @@ function mapPaymentStatus(status: string | undefined): WebhookResult["status"] {
       return "rejected";
     case "cancelled":
       return "cancelled";
+    case "refunded":
+    case "charged_back":
+      return "refunded";
     case "pending":
     case "in_process":
       return "pending";
@@ -215,8 +219,8 @@ export class MercadoPagoAdapter implements PaymentProvider {
     return prismaUnscoped.paymentConnection.upsert({
       where: { tenantId_provider: { tenantId, provider: "mercado_pago" } },
       update: {
-        accessToken: result.access_token,
-        refreshToken: result.refresh_token,
+        accessToken: encryptSecret(result.access_token),
+        refreshToken: encryptSecret(result.refresh_token),
         expiresAt: new Date(Date.now() + result.expires_in * 1000),
         status: "active",
         mpUserId: result.user_id ? String(result.user_id) : null,
@@ -224,8 +228,8 @@ export class MercadoPagoAdapter implements PaymentProvider {
       create: {
         tenantId,
         provider: "mercado_pago",
-        accessToken: result.access_token,
-        refreshToken: result.refresh_token,
+        accessToken: encryptSecret(result.access_token),
+        refreshToken: encryptSecret(result.refresh_token),
         expiresAt: new Date(Date.now() + result.expires_in * 1000),
         mpUserId: result.user_id ? String(result.user_id) : null,
       },
@@ -245,7 +249,7 @@ export class MercadoPagoAdapter implements PaymentProvider {
         body: {
           client_id: CLIENT_ID,
           client_secret: CLIENT_SECRET,
-          refresh_token: connection.refreshToken,
+          refresh_token: decryptSecret(connection.refreshToken),
         },
       });
 
@@ -256,14 +260,18 @@ export class MercadoPagoAdapter implements PaymentProvider {
       return await prismaUnscoped.paymentConnection.update({
         where: { id: connection.id },
         data: {
-          accessToken: result.access_token,
-          refreshToken: result.refresh_token,
+          accessToken: encryptSecret(result.access_token),
+          refreshToken: encryptSecret(result.refresh_token),
           expiresAt: new Date(Date.now() + result.expires_in * 1000),
           status: "active",
         },
       });
     } catch (err) {
-      console.error(`[mercadopago] Falha ao renovar token do tenant ${connection.tenantId}:`, err);
+      // Nunca loga o objeto de erro inteiro aqui — algumas libs HTTP
+      // embutem o corpo da request (com client_secret/refresh_token) no
+      // próprio erro. Só a mensagem, nunca o objeto cru.
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[mercadopago] Falha ao renovar token do tenant ${connection.tenantId}: ${message}`);
       return prismaUnscoped.paymentConnection.update({
         where: { id: connection.id },
         data: { status: "needs_reauth" },

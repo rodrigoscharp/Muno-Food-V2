@@ -66,7 +66,9 @@ async function handlePost(req: NextRequest, tenantId: string) {
       paymentId: charge.paymentId,
     });
   } catch (err) {
-    console.error("Mercado Pago error:", err);
+    // Só a mensagem — o erro pode embutir o corpo da request (que inclui
+    // o access_token usado na chamada).
+    console.error("Mercado Pago error:", err instanceof Error ? err.message : String(err));
     return NextResponse.json({ error: "Erro ao criar pagamento" }, { status: 500 });
   }
 }

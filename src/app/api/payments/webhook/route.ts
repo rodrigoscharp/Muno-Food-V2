@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma, prismaUnscoped } from "@/lib/prisma";
 import { runWithTenant } from "@/lib/tenant-context";
 import { getPaymentProvider } from "@/lib/payments/factory";
+import { broadcastTenantEvent } from "@/lib/realtime";
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,9 +24,13 @@ export async function POST(req: NextRequest) {
     });
     if (!orderMeta) return NextResponse.json({ received: true });
 
-    await runWithTenant(orderMeta.tenantId, async () => {
+    const tenantId = orderMeta.tenantId;
+
+    await runWithTenant(tenantId, async () => {
+      let order;
+
       if (result.status === "approved") {
-        await prisma.order.update({
+        order = await prisma.order.update({
           where: { id: result.orderId },
           data: {
             paymentStatus: "PAID",
@@ -34,16 +39,32 @@ export async function POST(req: NextRequest) {
           },
         });
       } else if (result.status === "rejected" || result.status === "cancelled") {
-        await prisma.order.update({
+        order = await prisma.order.update({
           where: { id: result.orderId },
           data: { paymentStatus: "UNPAID" },
         });
+      } else if (result.status === "refunded") {
+        order = await prisma.order.update({
+          where: { id: result.orderId },
+          data: { paymentStatus: "REFUNDED" },
+        });
+      }
+
+      if (order) {
+        await broadcastTenantEvent(tenantId, `order:${result.orderId}`, "order-updated", {
+          status: order.status,
+          updatedAt: order.updatedAt.toISOString(),
+          estimatedDeliveryAt: order.estimatedDeliveryAt?.toISOString() ?? null,
+        });
+        await broadcastTenantEvent(tenantId, "kitchen-orders", "order-updated", { orderId: result.orderId });
       }
     });
 
     return NextResponse.json({ received: true });
   } catch (err) {
-    console.error("Webhook error:", err);
+    // Só a mensagem — nunca o objeto de erro cru (pode embutir o access
+    // token usado pra consultar o pagamento).
+    console.error("Webhook error:", err instanceof Error ? err.message : String(err));
     return NextResponse.json({ error: "Webhook error" }, { status: 500 });
   }
 }
