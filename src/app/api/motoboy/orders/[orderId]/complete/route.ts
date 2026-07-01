@@ -1,34 +1,48 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { apiError, getTenantIdFromRequest, withTenant } from "@/lib/api";
+import { broadcastTenantEvent } from "@/lib/realtime";
 
 interface Params {
   params: Promise<{ orderId: string }>;
 }
 
 // POST /api/motoboy/orders/[orderId]/complete — motoboy conclui a entrega
-export async function POST(_req: Request, { params }: Params) {
-  const session = await auth();
-  if (!session?.user || (session.user.role !== "MOTOBOY" && session.user.role !== "ADMIN")) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  }
+export async function POST(req: Request, { params }: Params) {
+  const tenantId = getTenantIdFromRequest(req);
+  if (!tenantId) return apiError("Tenant não identificado", 400);
 
-  const { orderId } = await params;
+  return withTenant(tenantId, async () => {
+    const session = await auth();
+    if (!session?.user || (session.user.role !== "MOTOBOY" && session.user.role !== "ADMIN")) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
 
-  const order = await prisma.order.findUnique({ where: { id: orderId } });
+    const { orderId } = await params;
 
-  if (!order) {
-    return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
-  }
+    const order = await prisma.order.findUnique({ where: { id: orderId } });
 
-  if (order.motoboyId !== session.user.id) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
-  }
+    if (!order) {
+      return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
+    }
 
-  const updated = await prisma.order.update({
-    where: { id: orderId },
-    data: { status: "DELIVERED" },
+    if (order.motoboyId !== session.user.id) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+    }
+
+    const updated = await prisma.order.update({
+      where: { id: orderId },
+      data: { status: "DELIVERED" },
+    });
+
+    await broadcastTenantEvent(tenantId, `order:${orderId}`, "order-updated", {
+      status: updated.status,
+      updatedAt: updated.updatedAt.toISOString(),
+      estimatedDeliveryAt: updated.estimatedDeliveryAt?.toISOString() ?? null,
+    });
+    await broadcastTenantEvent(tenantId, "kitchen-orders", "order-updated", { orderId });
+
+    return NextResponse.json(updated);
   });
-
-  return NextResponse.json(updated);
 }

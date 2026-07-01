@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { withErrorHandling } from "@/lib/api";
+import { apiError, getTenantIdFromRequest, withTenant } from "@/lib/api";
+import { broadcastTenantEvent } from "@/lib/realtime";
 import { z } from "zod";
 
 const orderSchema = z.object({
@@ -23,7 +24,10 @@ const orderSchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
-  return withErrorHandling(async () => {
+  const tenantId = getTenantIdFromRequest(req);
+  if (!tenantId) return apiError("Tenant não identificado", 400);
+
+  return withTenant(tenantId, async () => {
     const session = await auth();
     const { searchParams } = new URL(req.url);
     const isKitchen = searchParams.get("kitchen") === "true";
@@ -71,7 +75,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  return withErrorHandling(async () => {
+  const tenantId = getTenantIdFromRequest(req);
+  if (!tenantId) return apiError("Tenant não identificado", 400);
+
+  return withTenant(tenantId, async () => {
     const session = await auth();
 
     const body = await req.json();
@@ -98,13 +105,14 @@ export async function POST(req: NextRequest) {
 
     // Lê o tempo estimado de entrega configurado pelo admin
     const timeSetting = await prisma.setting.findUnique({
-      where: { key: "delivery_time_minutes" },
+      where: { tenantId_key: { tenantId, key: "delivery_time_minutes" } },
     });
     const estimatedMinutes = timeSetting ? parseInt(timeSetting.value, 10) : 45;
     const estimatedDeliveryAt = new Date(Date.now() + estimatedMinutes * 60_000);
 
     const order = await prisma.order.create({
       data: {
+        tenantId,
         paymentMethod,
         notes,
         customerName,
@@ -130,6 +138,8 @@ export async function POST(req: NextRequest) {
       },
       include: { items: { include: { menuItem: true } } },
     });
+
+    await broadcastTenantEvent(tenantId, "kitchen-orders", "order-created", { orderId: order.id });
 
     return NextResponse.json(order, { status: 201 });
   });

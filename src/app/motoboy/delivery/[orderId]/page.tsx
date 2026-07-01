@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { prismaUnscoped } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
 import { MotoboyDeliveryClient } from "@/components/motoboy/MotoboyDeliveryClient";
 
@@ -11,8 +11,12 @@ export default async function MotoboyDeliveryPage({ params }: Props) {
   const { orderId } = await params;
   const session = await auth();
 
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
+  if (!session?.user || (session.user.role !== "MOTOBOY" && session.user.role !== "ADMIN")) {
+    redirect("/motoboy/login");
+  }
+
+  const order = await prismaUnscoped.order.findUnique({
+    where: { id: orderId, tenantId: session.user.tenantId },
     include: {
       items: { include: { menuItem: { select: { name: true } } } },
       deliveryTracking: true,
@@ -20,10 +24,6 @@ export default async function MotoboyDeliveryPage({ params }: Props) {
   });
 
   if (!order) notFound();
-
-  if (!session?.user || (session.user.role !== "MOTOBOY" && session.user.role !== "ADMIN")) {
-    redirect("/motoboy/login");
-  }
 
   if (order.motoboyId !== session.user.id) {
     redirect("/motoboy/pedidos");

@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { runWithTenant } from "@/lib/tenant-context";
 
 export interface DaySchedule {
   open: boolean;
@@ -39,10 +40,14 @@ export function checkIsOpen(schedule: WeekSchedule): boolean {
   return nowMin >= fh * 60 + fm && nowMin < th * 60 + tm;
 }
 
+// tenantId entra como argumento para que o unstable_cache diferencie o
+// cache por tenant (ver mesma observação em src/lib/restaurant.ts).
 export const getBusinessHours = unstable_cache(
-  async (): Promise<WeekSchedule> => {
+  async (tenantId: string): Promise<WeekSchedule> => {
     try {
-      const setting = await prisma.setting.findUnique({ where: { key: "business_hours" } });
+      const setting = await runWithTenant(tenantId, () =>
+        prisma.setting.findUnique({ where: { tenantId_key: { tenantId, key: "business_hours" } } })
+      );
       return setting ? { ...DEFAULT_SCHEDULE, ...JSON.parse(setting.value) } : DEFAULT_SCHEDULE;
     } catch {
       return DEFAULT_SCHEDULE;

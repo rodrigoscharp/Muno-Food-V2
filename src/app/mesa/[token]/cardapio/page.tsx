@@ -1,18 +1,22 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { runWithTenant } from "@/lib/tenant-context";
+import { getRequestTenantId } from "@/lib/tenant-request";
 import { CategoryNav } from "@/components/menu/CategoryNav";
 import { ProductCard } from "@/components/menu/ProductCard";
 import { MenuItemWithCategory } from "@/types";
 
 const getMenu = unstable_cache(
-  async () => {
+  async (tenantId: string) => {
     try {
-      return await prisma.category.findMany({
-        orderBy: { position: "asc" },
-        include: {
-          items: { where: { available: true }, orderBy: { name: "asc" } },
-        },
-      });
+      return await runWithTenant(tenantId, () =>
+        prisma.category.findMany({
+          orderBy: { position: "asc" },
+          include: {
+            items: { where: { available: true }, orderBy: { name: "asc" } },
+          },
+        })
+      );
     } catch {
       return [];
     }
@@ -22,7 +26,8 @@ const getMenu = unstable_cache(
 );
 
 export default async function MesaCardapioPage() {
-  const categories = await getMenu();
+  const tenantId = await getRequestTenantId();
+  const categories = await getMenu(tenantId);
   const nonEmpty = categories.filter((c) => c.items.length > 0);
 
   return (

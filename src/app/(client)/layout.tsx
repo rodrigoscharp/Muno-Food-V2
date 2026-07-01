@@ -3,15 +3,17 @@ import { BusinessHours } from "@/components/menu/BusinessHours";
 import { Footer } from "@/components/menu/Footer";
 import { getRestaurantInfo } from "@/lib/restaurant";
 import { getBusinessHours } from "@/lib/business-hours";
+import { getRequestTenantId } from "@/lib/tenant-request";
 
 export default async function ClientLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const tenantId = await getRequestTenantId();
   const [info, schedule] = await Promise.all([
-    getRestaurantInfo(),
-    getBusinessHours(),
+    getRestaurantInfo(tenantId),
+    getBusinessHours(tenantId),
   ]);
 
   return (

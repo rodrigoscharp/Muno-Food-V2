@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { withErrorHandling } from "@/lib/api";
+import { apiError, getTenantIdFromRequest, withTenant } from "@/lib/api";
 import { z } from "zod";
 
-export async function GET() {
-  return withErrorHandling(async () => {
+export async function GET(req: NextRequest) {
+  const tenantId = getTenantIdFromRequest(req);
+  if (!tenantId) return apiError("Tenant não identificado", 400);
+
+  return withTenant(tenantId, async () => {
     const categories = await prisma.category.findMany({
       orderBy: { position: "asc" },
     });
@@ -20,7 +23,10 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  return withErrorHandling(async () => {
+  const tenantId = getTenantIdFromRequest(req);
+  if (!tenantId) return apiError("Tenant não identificado", 400);
+
+  return withTenant(tenantId, async () => {
     const session = await auth();
     if (session?.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
@@ -32,7 +38,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
     }
 
-    const category = await prisma.category.create({ data: parsed.data });
+    const category = await prisma.category.create({ data: { ...parsed.data, tenantId } });
     return NextResponse.json(category, { status: 201 });
   });
 }

@@ -1,8 +1,11 @@
-import { prisma } from "@/lib/prisma";
+import { prismaUnscoped } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { AdminOrdersTable } from "@/components/adm/AdminOrdersTable";
 
 export default async function AdminOrdersPage() {
-  const orders = await prisma.order.findMany({
+  const session = await auth();
+  const orders = await prismaUnscoped.order.findMany({
+    where: { tenantId: session!.user.tenantId },
     orderBy: { createdAt: "desc" },
     take: 100,
     include: {

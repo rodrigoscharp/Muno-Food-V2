@@ -1,15 +1,21 @@
-import { prisma } from "@/lib/prisma";
+import { prismaUnscoped } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { MenuManager } from "@/components/adm/MenuManager";
 
 export default async function AdminMenuPage() {
-  const categories = await prisma.category.findMany({
+  const session = await auth();
+  const tenantId = session!.user.tenantId;
+
+  const categories = await prismaUnscoped.category.findMany({
+    where: { tenantId },
     orderBy: { position: "asc" },
     include: {
       items: { orderBy: { name: "asc" } },
     },
   });
 
-  const allCategories = await prisma.category.findMany({
+  const allCategories = await prismaUnscoped.category.findMany({
+    where: { tenantId },
     orderBy: { position: "asc" },
     select: { id: true, name: true, slug: true },
   });

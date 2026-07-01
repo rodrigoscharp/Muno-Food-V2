@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { prismaUnscoped } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { formatCurrency, formatDate, ORDER_STATUS_LABELS } from "@/lib/utils";
@@ -31,8 +31,8 @@ export default async function PedidosPage() {
     redirect("/login?callbackUrl=/pedidos");
   }
 
-  const orders = await prisma.order.findMany({
-    where: { userId: session.user.id },
+  const orders = await prismaUnscoped.order.findMany({
+    where: { userId: session.user.id, tenantId: session.user.tenantId },
     include: {
       items: { include: { menuItem: { select: { name: true } } } },
     },

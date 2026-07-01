@@ -1,20 +1,26 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { runWithTenant } from "@/lib/tenant-context";
+import { getRequestTenantId } from "@/lib/tenant-request";
 import { CategoryNav } from "@/components/menu/CategoryNav";
 import { ProductCard } from "@/components/menu/ProductCard";
 import { MenuAIAssistant } from "@/components/menu/MenuAIAssistant";
 import { MenuItemWithCategory } from "@/types";
 import { getBusinessHours, checkIsOpen } from "@/lib/business-hours";
 
+// tenantId como argumento diferencia o cache por tenant (mesmo motivo de
+// src/lib/restaurant.ts).
 const getMenu = unstable_cache(
-  async () => {
+  async (tenantId: string) => {
     try {
-      return await prisma.category.findMany({
-        orderBy: { position: "asc" },
-        include: {
-          items: { where: { available: true }, orderBy: { name: "asc" } },
-        },
-      });
+      return await runWithTenant(tenantId, () =>
+        prisma.category.findMany({
+          orderBy: { position: "asc" },
+          include: {
+            items: { where: { available: true }, orderBy: { name: "asc" } },
+          },
+        })
+      );
     } catch {
       return [];
     }
@@ -24,7 +30,8 @@ const getMenu = unstable_cache(
 );
 
 export default async function MenuPage() {
-  const [categories, schedule] = await Promise.all([getMenu(), getBusinessHours()]);
+  const tenantId = await getRequestTenantId();
+  const [categories, schedule] = await Promise.all([getMenu(tenantId), getBusinessHours(tenantId)]);
   const isOpen = checkIsOpen(schedule);
   const nonEmpty = categories.filter((c) => c.items.length > 0);
 

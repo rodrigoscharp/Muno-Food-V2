@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { apiError, getTenantIdFromRequest, withTenant } from "@/lib/api";
+import { broadcastTenantEvent } from "@/lib/realtime";
 
 interface Params {
   params: Promise<{ orderId: string }>;
@@ -56,51 +58,57 @@ async function getRouteDurationSeconds(
 
 // POST /api/motoboy/orders/[orderId]/location — atualiza posição GPS do motoboy
 export async function POST(req: Request, { params }: Params) {
-  const session = await auth();
-  if (!session?.user || (session.user.role !== "MOTOBOY" && session.user.role !== "ADMIN")) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  }
+  const tenantId = getTenantIdFromRequest(req);
+  if (!tenantId) return apiError("Tenant não identificado", 400);
 
-  const { orderId } = await params;
-  const body = await req.json();
-  const { lat, lng } = body as { lat: number; lng: number };
+  return withTenant(tenantId, async () => {
+    const session = await auth();
+    if (!session?.user || (session.user.role !== "MOTOBOY" && session.user.role !== "ADMIN")) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
 
-  if (typeof lat !== "number" || typeof lng !== "number") {
-    return NextResponse.json({ error: "Coordenadas inválidas" }, { status: 400 });
-  }
+    const { orderId } = await params;
+    const body = await req.json();
+    const { lat, lng } = body as { lat: number; lng: number };
 
-  // Verifica se é a primeira atualização de localização
-  const existing = await prisma.deliveryTracking.findUnique({
-    where: { orderId },
-    select: { id: true },
-  });
-  const isFirstUpdate = !existing;
+    if (typeof lat !== "number" || typeof lng !== "number") {
+      return NextResponse.json({ error: "Coordenadas inválidas" }, { status: 400 });
+    }
 
-  const tracking = await prisma.deliveryTracking.upsert({
-    where: { orderId },
-    update: { lat, lng },
-    create: { orderId, motoboyId: session.user.id, lat, lng },
-  });
+    // Verifica se é a primeira atualização de localização
+    const existing = await prisma.deliveryTracking.findUnique({
+      where: { orderId },
+      select: { id: true },
+    });
+    const isFirstUpdate = !existing;
 
-  // Na primeira atualização, calcula a previsão pela rota real
-  if (isFirstUpdate) {
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
-      select: { deliveryAddress: true },
+    const tracking = await prisma.deliveryTracking.upsert({
+      where: { orderId },
+      update: { lat, lng },
+      create: { orderId, motoboyId: session.user.id, lat, lng },
     });
 
-    if (order?.deliveryAddress) {
-      // Geocodifica destino e calcula rota em paralelo com a resposta
-      // Usa Promise sem await para não bloquear a resposta ao motoboy
-      recalculateETA(orderId, lat, lng, order.deliveryAddress).catch(() => {});
-    }
-  }
+    // Na primeira atualização, calcula a previsão pela rota real
+    if (isFirstUpdate) {
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: { deliveryAddress: true },
+      });
 
-  return NextResponse.json(tracking);
+      if (order?.deliveryAddress) {
+        // Geocodifica destino e calcula rota em paralelo com a resposta
+        // Usa Promise sem await para não bloquear a resposta ao motoboy
+        recalculateETA(tenantId, orderId, lat, lng, order.deliveryAddress).catch(() => {});
+      }
+    }
+
+    return NextResponse.json(tracking);
+  });
 }
 
 // Calcula e persiste a previsão de entrega baseada na rota real
 async function recalculateETA(
+  tenantId: string,
   orderId: string,
   motoboyLat: number,
   motoboyLng: number,
@@ -121,9 +129,15 @@ async function recalculateETA(
   const bufferSeconds = 5 * 60;
   const estimatedDeliveryAt = new Date(Date.now() + (durationSeconds + bufferSeconds) * 1000);
 
-  await prisma.order.update({
+  const updated = await prisma.order.update({
     where: { id: orderId },
     data: { estimatedDeliveryAt },
+  });
+
+  await broadcastTenantEvent(tenantId, `order:${orderId}`, "order-updated", {
+    status: updated.status,
+    updatedAt: updated.updatedAt.toISOString(),
+    estimatedDeliveryAt: updated.estimatedDeliveryAt?.toISOString() ?? null,
   });
 }
 

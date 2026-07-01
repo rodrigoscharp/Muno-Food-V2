@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { apiError, getTenantIdFromRequest, withTenant } from "@/lib/api";
 import { resend } from "@/lib/resend";
 import { getRestaurantInfo } from "@/lib/restaurant";
 import { z } from "zod";
 const schema = z.object({
   email: z.string().email(),
 });
+
+function buildTenantBaseUrl(slug: string): string {
+  const rootDomain = (process.env.ROOT_DOMAIN ?? "localhost:3000").split(",")[0];
+  if (slug === "default") {
+    return process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_URL ?? `http://${rootDomain}`;
+  }
+  const protocol = rootDomain.startsWith("localhost") ? "http" : "https";
+  return `${protocol}://${slug}.${rootDomain}`;
+}
 
 function buildEmailHtml({
   userName,
@@ -188,7 +198,10 @@ function buildEmailHtml({
 }
 
 export async function POST(req: NextRequest) {
-  try {
+  const tenantId = getTenantIdFromRequest(req);
+  if (!tenantId) return apiError("Tenant não identificado", 400);
+
+  return withTenant(tenantId, async () => {
     const body = await req.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
@@ -197,7 +210,9 @@ export async function POST(req: NextRequest) {
 
     const { email } = parsed.data;
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({
+      where: { tenantId_email: { tenantId, email } },
+    });
 
     // Sempre retorna sucesso para não expor quais emails existem
     if (!user || !user.password) {
@@ -210,10 +225,11 @@ export async function POST(req: NextRequest) {
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hora
 
     const resetToken = await prisma.passwordResetToken.create({
-      data: { email, expiresAt },
+      data: { tenantId, email, expiresAt },
     });
 
-    const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_URL ?? "http://localhost:3000";
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { slug: true } });
+    const baseUrl = buildTenantBaseUrl(tenant?.slug ?? "default");
     const resetUrl = `${baseUrl}/redefinir-senha?token=${resetToken.token}`;
 
     if (!process.env.RESEND_API_KEY) {
@@ -221,7 +237,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Serviço de email não configurado" }, { status: 503 });
     }
 
-    const restaurantInfo = await getRestaurantInfo();
+    const restaurantInfo = await getRestaurantInfo(tenantId);
 
     // Usa URL absoluta: se já for http (Supabase/CDN), usa direto; se for local, constrói com baseUrl
     const logoUrl = restaurantInfo.logoUrl.startsWith("http")
@@ -243,8 +259,5 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (err) {
-    console.error("[forgot-password] Erro:", err);
-    return NextResponse.json({ error: "Erro interno ao enviar email" }, { status: 500 });
-  }
+  });
 }

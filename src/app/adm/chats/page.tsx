@@ -1,12 +1,12 @@
-import { prisma } from "@/lib/prisma";
+import { prismaUnscoped } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { AdminChatsClient } from "./AdminChatsClient";
 
 export default async function AdminChatsPage() {
   const session = await auth();
 
-  const ordersWithChats = await prisma.order.findMany({
-    where: { chatMessages: { some: {} } },
+  const ordersWithChats = await prismaUnscoped.order.findMany({
+    where: { tenantId: session!.user.tenantId, chatMessages: { some: {} } },
     include: {
       chatMessages: {
         orderBy: { createdAt: "desc" },
@@ -22,6 +22,7 @@ export default async function AdminChatsPage() {
     <AdminChatsClient
       orders={ordersWithChats}
       adminName={session?.user?.name ?? "Admin"}
+      tenantId={session!.user.tenantId}
     />
   );
 }

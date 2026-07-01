@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { apiError, getTenantIdFromRequest, withTenant } from "@/lib/api";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -10,7 +11,10 @@ const registerSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  try {
+  const tenantId = getTenantIdFromRequest(req);
+  if (!tenantId) return apiError("Tenant não identificado", 400);
+
+  return withTenant(tenantId, async () => {
     const body = await req.json();
     const parsed = registerSchema.safeParse(body);
 
@@ -23,7 +27,9 @@ export async function POST(req: NextRequest) {
 
     const { name, email, password } = parsed.data;
 
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const existing = await prisma.user.findUnique({
+      where: { tenantId_email: { tenantId, email } },
+    });
     if (existing) {
       return NextResponse.json(
         { error: "Email já cadastrado" },
@@ -34,12 +40,10 @@ export async function POST(req: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 12);
 
     const user = await prisma.user.create({
-      data: { name, email, password: hashedPassword },
+      data: { tenantId, name, email, password: hashedPassword },
       select: { id: true, name: true, email: true, role: true },
     });
 
     return NextResponse.json(user, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
-  }
+  });
 }

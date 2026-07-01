@@ -1,8 +1,11 @@
-import { prisma } from "@/lib/prisma";
+import { prismaUnscoped } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { formatCurrency } from "@/lib/utils";
 import { AdminCharts } from "@/components/adm/AdminCharts";
 
 export default async function AdminDashboard() {
+  const session = await auth();
+  const tenantId = session!.user.tenantId;
   // Usa UTC-3 (BRT) para calcular "hoje" e "início do mês" corretamente
   const nowBRT = new Date(Date.now() - 3 * 60 * 60 * 1000);
   const todayBRT = new Date(nowBRT);
@@ -19,19 +22,19 @@ export default async function AdminDashboard() {
   };
 
   const [todayStats, monthStats, menuItemCount, pendingOrders] = await Promise.all([
-    prisma.order.aggregate({
-      where: { createdAt: { gte: todayBRT }, ...revenueFilter },
+    prismaUnscoped.order.aggregate({
+      where: { tenantId, createdAt: { gte: todayBRT }, ...revenueFilter },
       _sum: { total: true },
       _count: true,
     }),
-    prisma.order.aggregate({
-      where: { createdAt: { gte: startOfMonthBRT }, ...revenueFilter },
+    prismaUnscoped.order.aggregate({
+      where: { tenantId, createdAt: { gte: startOfMonthBRT }, ...revenueFilter },
       _sum: { total: true },
       _count: true,
     }),
-    prisma.menuItem.count(),
-    prisma.order.count({
-      where: { status: { in: ["PENDING", "CONFIRMED", "IN_PREPARATION"] } },
+    prismaUnscoped.menuItem.count({ where: { tenantId } }),
+    prismaUnscoped.order.count({
+      where: { tenantId, status: { in: ["PENDING", "CONFIRMED", "IN_PREPARATION"] } },
     }),
   ]);
 

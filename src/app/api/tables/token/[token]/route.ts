@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { withErrorHandling } from "@/lib/api";
+import { apiError, getTenantIdFromRequest, withTenant } from "@/lib/api";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
-  return withErrorHandling(async () => {
+  const tenantId = getTenantIdFromRequest(req);
+  if (!tenantId) return apiError("Tenant não identificado", 400);
+
+  return withTenant(tenantId, async () => {
     const { token } = await params;
 
     const table = await prisma.table.findFirst({

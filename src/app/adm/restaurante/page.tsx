@@ -1,4 +1,5 @@
-import { prisma } from "@/lib/prisma";
+import { prismaUnscoped } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { DeliveryTimeControl } from "@/components/adm/DeliveryTimeControl";
 import { BusinessHoursControl, WeekSchedule } from "@/components/adm/BusinessHoursControl";
 import { RestaurantInfoControl } from "@/components/adm/RestaurantInfoControl";
@@ -18,12 +19,15 @@ const DEFAULT_HOURS: WeekSchedule = {
 };
 
 export default async function RestauranteAdminPage() {
+  const session = await auth();
+  const tenantId = session!.user.tenantId;
+
   const [deliveryTimeSetting, businessHoursSetting, restaurantInfo, deliveryZones, printerSetting] = await Promise.all([
-    prisma.setting.findUnique({ where: { key: "delivery_time_minutes" } }),
-    prisma.setting.findUnique({ where: { key: "business_hours" } }),
-    getRestaurantInfo(),
-    prisma.deliveryZone.findMany({ where: { active: true }, orderBy: { position: "asc" } }),
-    prisma.setting.findUnique({ where: { key: "printer_config" } }),
+    prismaUnscoped.setting.findUnique({ where: { tenantId_key: { tenantId, key: "delivery_time_minutes" } } }),
+    prismaUnscoped.setting.findUnique({ where: { tenantId_key: { tenantId, key: "business_hours" } } }),
+    getRestaurantInfo(tenantId),
+    prismaUnscoped.deliveryZone.findMany({ where: { active: true, tenantId }, orderBy: { position: "asc" } }),
+    prismaUnscoped.setting.findUnique({ where: { tenantId_key: { tenantId, key: "printer_config" } } }),
   ]);
 
   const printerConfig: PrinterConfig = printerSetting

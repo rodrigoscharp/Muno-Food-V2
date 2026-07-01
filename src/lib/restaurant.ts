@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { runWithTenant } from "@/lib/tenant-context";
 
 export interface RestaurantInfo {
   name: string;
@@ -15,12 +16,17 @@ const DEFAULT: RestaurantInfo = {
   logoUrl: "/munowbg.png",
 };
 
+// tenantId entra como argumento para que o unstable_cache diferencie o
+// cache por tenant — sem isso, o restaurante info de um tenant vazaria
+// para os outros (mesma chave de cache global).
 export const getRestaurantInfo = unstable_cache(
-  async (): Promise<RestaurantInfo> => {
+  async (tenantId: string): Promise<RestaurantInfo> => {
     try {
-      const setting = await prisma.setting.findUnique({
-        where: { key: "restaurant_info" },
-      });
+      const setting = await runWithTenant(tenantId, () =>
+        prisma.setting.findUnique({
+          where: { tenantId_key: { tenantId, key: "restaurant_info" } },
+        })
+      );
       return setting ? { ...DEFAULT, ...JSON.parse(setting.value) } : DEFAULT;
     } catch {
       return DEFAULT;

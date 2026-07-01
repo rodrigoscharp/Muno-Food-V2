@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { prismaUnscoped } from "@/lib/prisma";
 import { getRestaurantInfo } from "@/lib/restaurant";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
@@ -55,11 +55,11 @@ export default async function OrderChatPage({ params }: Props) {
   }
 
   const [order, restaurant] = await Promise.all([
-    prisma.order.findUnique({
-      where: { id: orderId },
+    prismaUnscoped.order.findUnique({
+      where: { id: orderId, tenantId: session.user.tenantId },
       select: { id: true, userId: true, status: true },
     }),
-    getRestaurantInfo(),
+    getRestaurantInfo(session.user.tenantId),
   ]);
 
   if (!order) notFound();
@@ -98,6 +98,7 @@ export default async function OrderChatPage({ params }: Props) {
         <OrderStatusBadge
           orderId={orderId}
           initialStatus={order.status as OrderStatus}
+          tenantId={session.user.tenantId}
         />
       </header>
 

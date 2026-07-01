@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { withErrorHandling } from "@/lib/api";
+import { apiError, getTenantIdFromRequest, withTenant } from "@/lib/api";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -9,8 +9,11 @@ const createSchema = z.object({
   name: z.string().optional(),
 });
 
-export async function GET() {
-  return withErrorHandling(async () => {
+export async function GET(req: NextRequest) {
+  const tenantId = getTenantIdFromRequest(req);
+  if (!tenantId) return apiError("Tenant não identificado", 400);
+
+  return withTenant(tenantId, async () => {
     const session = await auth();
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
@@ -37,7 +40,10 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  return withErrorHandling(async () => {
+  const tenantId = getTenantIdFromRequest(req);
+  if (!tenantId) return apiError("Tenant não identificado", 400);
+
+  return withTenant(tenantId, async () => {
     const session = await auth();
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
@@ -51,6 +57,7 @@ export async function POST(req: NextRequest) {
 
     const table = await prisma.table.create({
       data: {
+        tenantId,
         number: parsed.data.number,
         name: parsed.data.name,
       },

@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { prismaUnscoped } from "@/lib/prisma";
 import { MotoboyOrdersList } from "@/components/motoboy/MotoboyOrdersList";
 
 export default async function MotoboyPedidosPage() {
@@ -10,24 +10,28 @@ export default async function MotoboyPedidosPage() {
     redirect("/motoboy/login");
   }
 
-  const activeDelivery = await prisma.order.findFirst({
-    where: {
-      motoboyId: session.user.id,
-      status: "OUT_FOR_DELIVERY",
-    },
-  });
-
-  const availableOrders = await prisma.order.findMany({
-    where: {
-      status: "READY",
-      deliveryType: "DELIVERY",
-      motoboyId: null,
-    },
-    include: {
-      items: { include: { menuItem: { select: { name: true } } } },
-    },
-    orderBy: { createdAt: "asc" },
-  });
+  const tenantId = session.user.tenantId;
+  const [activeDelivery, availableOrders] = await Promise.all([
+    prismaUnscoped.order.findFirst({
+      where: {
+        tenantId,
+        motoboyId: session.user.id,
+        status: "OUT_FOR_DELIVERY",
+      },
+    }),
+    prismaUnscoped.order.findMany({
+      where: {
+        tenantId,
+        status: "READY",
+        deliveryType: "DELIVERY",
+        motoboyId: null,
+      },
+      include: {
+        items: { include: { menuItem: { select: { name: true } } } },
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
 
   return (
     <MotoboyOrdersList

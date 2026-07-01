@@ -1,6 +1,7 @@
-import { prisma } from "@/lib/prisma";
+import { prismaUnscoped } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { getRequestTenantId } from "@/lib/tenant-request";
 import { OrderTracker } from "@/components/tracking/OrderTracker";
 import { PixPayment } from "@/components/tracking/PixPayment";
 import { LoginPromptBanner } from "@/components/tracking/LoginPromptBanner";
@@ -16,8 +17,9 @@ export default async function TrackPage({ params, searchParams }: Props) {
   const session = await auth();
   const isLoggedIn = !!session?.user;
 
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
+  const tenantId = await getRequestTenantId();
+  const order = await prismaUnscoped.order.findUnique({
+    where: { id: orderId, tenantId },
     include: {
       items: { include: { menuItem: true } },
       deliveryTracking: true,
@@ -52,6 +54,7 @@ export default async function TrackPage({ params, searchParams }: Props) {
       <OrderTracker
         orderId={orderId}
         initialStatus={order.status}
+        tenantId={order.tenantId}
         order={{
           id: order.id,
           status: order.status,

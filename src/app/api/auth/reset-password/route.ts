@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { apiError, getTenantIdFromRequest, withTenant } from "@/lib/api";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -9,7 +10,10 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  try {
+  const tenantId = getTenantIdFromRequest(req);
+  if (!tenantId) return apiError("Tenant não identificado", 400);
+
+  return withTenant(tenantId, async () => {
     const body = await req.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
@@ -34,14 +38,12 @@ export async function POST(req: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 12);
 
     await prisma.user.update({
-      where: { email: resetToken.email },
+      where: { tenantId_email: { tenantId: resetToken.tenantId, email: resetToken.email } },
       data: { password: hashedPassword },
     });
 
     await prisma.passwordResetToken.delete({ where: { token } });
 
     return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
-  }
+  });
 }
